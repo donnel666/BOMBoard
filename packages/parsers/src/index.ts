@@ -1,5 +1,17 @@
 export const parsersPackageName = "@bomboard/parsers";
 
+export {parseBomCsv} from "./bom-coordinate/bom-parser.js";
+export {
+  parseCoordinateCsv,
+  parseLengthMm,
+  parsePlacementSide,
+} from "./bom-coordinate/coordinate-parser.js";
+export {decodeBomCoordinateText} from "./bom-coordinate/csv.js";
+export {classifyBomCoordinateFileName} from "./bom-coordinate/file-types.js";
+export {
+  mergeBomAndCoordinates,
+  parseBomCoordinateProject,
+} from "./bom-coordinate/project-parser.js";
 export {
   classifyGerber2DFileName,
   gerber2DFileTypePriorities,
@@ -15,6 +27,24 @@ export {
   renderGerber2DSideSvg,
 } from "./gerber/svg-renderer.js";
 
+export type {
+  BomComponent,
+  BomCoordinateComponent,
+  BomCoordinateEncoding,
+  BomCoordinateFileClassification,
+  BomCoordinateFileKind,
+  BomCoordinateInput,
+  BomCoordinateParseOptions,
+  BomCoordinateProjectInput,
+  BomCoordinateTextInput,
+  BomRecord,
+  CoordinateRecord,
+  ParsedBomCoordinateProject,
+  ParsedBomCsv,
+  ParsedCoordinateCsv,
+  PlacementSide,
+  PointMm,
+} from "./bom-coordinate/types.js";
 export type {
   BoardSide,
   DrillHit,

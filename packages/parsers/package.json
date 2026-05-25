@@ -17,7 +17,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@tracespace/core": "5.0.0-alpha.0"
+    "@tracespace/core": "5.0.0-alpha.0",
+    "csv-parse": "^6.2.1"
   },
   "devDependencies": {
     "vitest": "^4.1.7"
