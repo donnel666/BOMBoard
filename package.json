@@ -13,6 +13,7 @@
     "dev:web": "pnpm --filter @bomboard/web dev",
     "dev:desktop": "concurrently -k -n web,desktop -c cyan,yellow \"pnpm dev:web\" \"pnpm --filter @bomboard/desktop dev\"",
     "build": "pnpm -r --if-present build",
+    "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r --if-present typecheck"
   },
   "devDependencies": {

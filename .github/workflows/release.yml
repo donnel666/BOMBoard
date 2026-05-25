@@ -1,0 +1,89 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    name: Package and Publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Package artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag="${GITHUB_REF_NAME}"
+          mkdir -p artifacts
+
+          tar -czf "artifacts/bomboard-web-${tag}.tar.gz" \
+            -C apps/web \
+            dist \
+            package.json
+
+          tar -czf "artifacts/bomboard-desktop-runtime-${tag}.tar.gz" \
+            -C apps/desktop \
+            dist \
+            package.json
+
+          tar -czf "artifacts/bomboard-libraries-${tag}.tar.gz" \
+            packages/core/dist \
+            packages/core/package.json \
+            packages/parsers/dist \
+            packages/parsers/package.json \
+            packages/ui/dist \
+            packages/ui/package.json \
+            packages/viewer/dist \
+            packages/viewer/package.json
+
+          sha256sum artifacts/*.tar.gz > artifacts/SHA256SUMS.txt
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: bomboard-${{ github.ref_name }}
+          path: artifacts/*
+          if-no-files-found: error
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true
