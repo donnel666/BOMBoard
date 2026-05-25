@@ -12,7 +12,13 @@
     }
   },
   "scripts": {
+    "prebuild": "pnpm --filter @bomboard/parsers build",
+    "pretypecheck": "pnpm --filter @bomboard/parsers build",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@bomboard/parsers": "workspace:*",
+    "pixi.js": "^8.18.1"
   }
 }

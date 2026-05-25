@@ -1,63 +1,224 @@
-.app-shell {
+.board-app {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(320px, 3fr);
   min-height: 100vh;
-  padding: 56px 24px 72px;
+  background: #101615;
 }
 
-.hero {
-  max-width: 720px;
-  margin: 0 auto 32px;
+.viewer-shell {
+  position: relative;
+  min-width: 0;
+  min-height: 100vh;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  background: #0b1110;
 }
 
-.eyebrow {
-  margin: 0 0 12px;
-  color: var(--accent);
-  font-size: 0.875rem;
+.viewer-canvas {
+  width: 100%;
+  height: 100vh;
+}
+
+.viewer-status {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  padding: 24px;
+  color: #f5efe1;
+  background: rgba(7, 11, 10, 0.82);
+  text-align: center;
+}
+
+.viewer-status strong {
+  font-size: 1rem;
+}
+
+.viewer-status span {
+  max-width: min(520px, 72vw);
+  color: #d7cdbb;
+  font-size: 0.88rem;
+}
+
+.component-panel {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  min-width: 0;
+  max-height: 100vh;
+  background: #f4f0e7;
+  color: #171b20;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 18px 16px;
+  border-bottom: 1px solid rgba(23, 27, 32, 0.12);
+}
+
+.panel-label {
+  margin: 0 0 4px;
+  color: #59625f;
+  font-size: 0.74rem;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.summary {
+.panel-header h1 {
   margin: 0;
-  font-size: 1.1rem;
-  color: var(--text-muted);
+  font-size: 1.35rem;
+  line-height: 1.1;
 }
 
-.grid {
+.count-badge {
+  display: inline-grid;
+  min-width: 42px;
+  height: 32px;
+  place-content: center;
+  border-radius: 6px;
+  background: #18211f;
+  color: #f6d779;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.selection-summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(23, 27, 32, 0.12);
+  background: #ebe4d8;
 }
 
-.card {
-  padding: 20px;
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  background: var(--panel);
-  box-shadow: 0 20px 40px rgba(11, 21, 38, 0.08);
+.selection-summary span {
+  color: #5a625f;
+  font-size: 0.78rem;
+}
+
+.selection-summary strong {
+  color: #171b20;
+  font-size: 1rem;
+}
+
+.component-list {
+  min-height: 0;
+  overflow: auto;
+  padding: 8px;
+}
+
+.component-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 2px 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
   text-align: left;
 }
 
-.card h2 {
-  margin: 0 0 10px;
+.component-row:hover {
+  background: rgba(24, 33, 31, 0.06);
 }
 
-.card p {
-  margin: 0;
-  color: var(--text-muted);
+.component-row.is-matched {
+  border-color: rgba(195, 139, 21, 0.38);
+  background: rgba(246, 204, 84, 0.26);
 }
 
-.card code {
+.component-row.is-selected {
+  border-color: rgba(190, 80, 28, 0.72);
+  background: #f6c66b;
+}
+
+.component-designators {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  align-self: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.component-tag {
+  min-width: 0;
+  padding: 3px 5px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  appearance: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.25;
+  cursor: pointer;
+}
+
+.component-tag:hover {
+  background: rgba(24, 33, 31, 0.08);
+}
+
+.component-tag.is-matched {
+  background: rgba(246, 204, 84, 0.38);
+}
+
+.component-tag.is-selected {
+  border-color: rgba(190, 80, 28, 0.72);
+  background: #f6c66b;
+}
+
+.component-identity {
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  appearance: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.component-meta {
+  overflow: hidden;
+  font-size: 0.86rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.component-footprint {
+  overflow: hidden;
+  color: #626b67;
+  font-size: 0.74rem;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 @media (max-width: 900px) {
-  .grid {
+  .board-app {
     grid-template-columns: 1fr;
+    grid-template-rows: minmax(420px, 70vh) minmax(0, 30vh);
   }
 
-  .app-shell {
-    padding-inline: 16px;
-    padding-top: 40px;
+  .viewer-shell,
+  .viewer-canvas {
+    min-height: 0;
+    height: 70vh;
+  }
+
+  .component-panel {
+    max-height: 30vh;
   }
 }

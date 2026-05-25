@@ -4,13 +4,18 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "predev": "pnpm --filter @bomboard/viewer build",
     "dev": "vite",
+    "prebuild": "pnpm --filter @bomboard/viewer build",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "pretypecheck": "pnpm --filter @bomboard/viewer build",
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
+    "@bomboard/parsers": "workspace:*",
+    "@bomboard/viewer": "workspace:*",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
   },

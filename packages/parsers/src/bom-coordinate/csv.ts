@@ -1,4 +1,4 @@
-import {parse} from "csv-parse/sync";
+import Papa from "papaparse";
 
 import type {
   BomCoordinateEncoding,
@@ -35,18 +35,25 @@ export function parseCsvRecords(
   options: BomCoordinateParseOptions = {}
 ): Array<Record<string, string>> {
   const text = decodeBomCoordinateText(input, options);
+  const result = Papa.parse<Record<string, string>>(text, {
+    header: true,
+    skipEmptyLines: true,
+    transformHeader: header => cleanField(header),
+  });
 
-  return parse(text, {
-    bom: true,
-    columns: headers => headers.map(header => cleanField(String(header))),
-    relax_column_count: true,
-    skip_empty_lines: true,
-    trim: false,
-  }) as Array<Record<string, string>>;
+  return result.data.map(row => {
+    const normalized: Record<string, string> = {};
+    for (const [key, value] of Object.entries(row)) {
+      if (key === "__parsed_extra") continue;
+      normalized[cleanField(key)] = cleanField(value);
+    }
+    return normalized;
+  });
 }
 
 export function cleanField(value: unknown): string {
   return String(value ?? "")
+    .replace(/^\uFEFF/, "")
     .replace(/[\u0000-\u001f\u007f]/g, "")
     .trim();
 }
