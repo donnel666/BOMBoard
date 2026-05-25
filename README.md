@@ -47,3 +47,7 @@ pnpm typecheck
 ## Documentation
 
 - Project plan: [docs/project-plan.md](./docs/project-plan.md)
+
+## License
+
+GNU General Public License v3.0. See [LICENSE](./LICENSE).
