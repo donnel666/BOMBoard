@@ -1,0 +1,63 @@
+.app-shell {
+  min-height: 100vh;
+  padding: 56px 24px 72px;
+}
+
+.hero {
+  max-width: 720px;
+  margin: 0 auto 32px;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: var(--accent);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.summary {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--text-muted);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.card {
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--panel);
+  box-shadow: 0 20px 40px rgba(11, 21, 38, 0.08);
+  text-align: left;
+}
+
+.card h2 {
+  margin: 0 0 10px;
+}
+
+.card p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.card code {
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .app-shell {
+    padding-inline: 16px;
+    padding-top: 40px;
+  }
+}

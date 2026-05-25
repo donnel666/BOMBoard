@@ -1,0 +1,19 @@
+{
+  "name": "@bomboard/desktop",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "cross-env VITE_DEV_SERVER_URL=http://localhost:5173 concurrently -k -n tsc,electron -c blue,green \"tsc -p tsconfig.json --watch --preserveWatchOutput\" \"wait-on dist/main.js tcp:127.0.0.1:5173 && electronmon dist/main.js\"",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^39.2.3",
+    "electronmon": "^2.0.3",
+    "wait-on": "^9.0.3"
+  }
+}
