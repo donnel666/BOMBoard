@@ -13,6 +13,13 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@tracespace/core": "5.0.0-alpha.0"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.7"
   }
 }
