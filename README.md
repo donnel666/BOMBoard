@@ -1,53 +1,44 @@
 # BOMBoard
 
-BOMBoard is a 2D PCB review tool for cross-probing between board manufacturing data and BOM data.
+English | [中文](./README.zh-CN.md)
 
-The repository is initialized as a single workspace with:
+BOMBoard is an open source 2D PCB review tool for cross-probing between board manufacturing data and BOM data.
 
-- a shared React + Vite frontend
-- an Electron desktop shell
-- placeholder shared packages for parsers, rendering, and core domain logic
+The web app runs locally in the browser. It loads a ZIP package or a local directory, validates the project files, renders the PCB from Gerber and drill data, and links the board view with BOM and coordinate data. Project data is kept in browser storage so a refresh can restore the current workspace until the project is closed manually.
 
-No product functionality is implemented yet. This scaffold only establishes the project structure.
+## Features
 
-## Workspace
+- Local ZIP package or directory loading. No server upload is required.
+- Gerber and Excellon drill rendering.
+- BOM CSV and coordinate CSV parsing.
+- Cross-probing between the board view and component list.
+- BOM fuzzy search by designator, package, and component name.
+- BOM sorting optimized for common SMD resistors, capacitors, and inductors.
+- Browser-language based Chinese and English UI.
+- Open source under GPL-3.0.
 
-```text
-BOMBoard/
-  apps/
-    web/
-    desktop/
-  packages/
-    core/
-    parsers/
-    viewer/
-    ui/
-  docs/
-```
+## Project Links
 
-## Tooling
+- GitHub: <https://github.com/donnel666/BOMBoard>
+- QQ group: [2163055552](https://qm.qq.com/q/iBHcSKY3wk)
+- License: [GNU General Public License v3.0](./LICENSE)
 
-- Node.js
-- pnpm
-- React
-- Vite
-- TypeScript
-- Electron
+## Requirements
 
-## Commands
+- Node.js 22 or newer
+- pnpm 10 or newer
+
+## Development
 
 ```bash
 pnpm install
 pnpm dev:web
-pnpm dev:desktop
-pnpm build
-pnpm typecheck
 ```
 
-## Documentation
+## Verification
 
-- Project plan: [docs/project-plan.md](./docs/project-plan.md)
-
-## License
-
-GNU General Public License v3.0. See [LICENSE](./LICENSE).
+```bash
+pnpm build
+pnpm typecheck
+pnpm test
+```

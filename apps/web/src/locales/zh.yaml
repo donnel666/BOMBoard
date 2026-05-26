@@ -1,0 +1,59 @@
+app:
+  name: BOMBoard
+aria:
+  boardSide: 板面
+  boardViewControls: 板图视图控制
+  clearBomSearch: 清除 BOM 搜索
+  closeProject: 关闭项目
+  componentDesignators: "{{label}} 元件"
+  openSourceProject: 在 GitHub 打开开源项目
+  searchBom: 按位号、封装或名称搜索 BOM
+componentPanel:
+  components: 元件
+  matchedCount: "匹配 {{count}} 个"
+  noPlacedComponents: 所选项目中没有找到已放置的元件。
+  noProjectLoaded: 未加载项目
+  noProjectOpen: 当前没有打开项目。
+  noSearchMatches: 没有匹配搜索条件的元件。
+  none: 无
+  searchPlaceholder: 搜索位号、封装、名称
+  selected: 已选
+controls:
+  bottom: 底层
+  top: 顶层
+errors:
+  emptyBomDesignators: BOM CSV 中没有可用的元件位号。
+  emptyCoordinatePlacements: 坐标 CSV 中没有可用的元件坐标。
+  failedClearSavedProject: 清除已保存项目失败。
+  failedOpenProjectStorage: 打开项目存储失败。
+  failedReadSavedProject: 读取已保存项目失败。
+  failedRestore: "恢复已保存项目失败：{{error}}"
+  failedSaveProject: 保存项目失败。
+  indexedDbUnavailable: 当前浏览器不支持 IndexedDB。
+  missingBomFile: 所选项目缺少 BOM CSV 文件。
+  missingCoordinateFile: 所选项目缺少坐标 CSV 文件。
+  missingDrillFile: 所选项目缺少 Excellon 钻孔文件。
+  missingGerberFiles: 所选项目缺少可渲染的 Gerber 文件。
+  missingReadableFiles: 所选项目中没有可读取的文件。
+  projectOpenedPersistFailed: "项目已打开，但浏览器无法持久保存：{{error}}"
+  savedProjectClearAborted: 已保存项目清除操作已中止。
+  savedProjectReadAborted: 已保存项目读取操作已中止。
+  savedProjectWriteAborted: 已保存项目写入操作已中止。
+  viewerContainerUnavailable: 查看器容器不可用。
+import:
+  directoryUnsupported: 当前浏览器不支持选择目录，请改用 ZIP 包。
+  localProjectPrompt: 请选择本地 ZIP 包或目录，需包含 Gerber、钻孔、坐标 CSV 和 BOM CSV 文件。
+  openProject: 打开项目
+  selectDirectory: 选择目录
+  selectZip: 选择 ZIP
+  selectedDirectory: 已选择的目录
+status:
+  checkingSavedWorkspace: 正在检查已保存的工作区
+  defaultImportPrompt: 请选择 ZIP 包或目录开始。
+  loadingProject: 正在加载项目
+  projectCouldNotOpen: 项目无法打开
+  reading: "正在读取 {{sourceName}}"
+  ready: 就绪
+  renderingBoard: 正在渲染板图
+  savingProject: 正在保存项目
+  validatingProjectFiles: 正在校验项目文件

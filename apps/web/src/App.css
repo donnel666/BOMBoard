@@ -18,12 +18,120 @@
   height: 100vh;
 }
 
+.project-title {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 3;
+  max-width: min(520px, calc(100% - 430px));
+  height: 34px;
+  padding: 0 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(8, 14, 13, 0.78);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
+  color: #f4f0e6;
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 32px;
+  text-align: center;
+  text-overflow: ellipsis;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+
+.viewer-actions {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 4;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.bom-github-link {
+  display: grid;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  place-content: center;
+  border: 1px solid rgba(23, 27, 32, 0.14);
+  border-radius: 7px;
+  background: #fffaf0;
+  color: #171b20;
+}
+
+.bom-github-link svg {
+  display: block;
+  width: 19px;
+  height: 19px;
+}
+
+.side-switch {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(8, 14, 13, 0.78);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(8px);
+}
+
+.side-switch button,
+.close-project-button {
+  height: 32px;
+  border: 0;
+  border-radius: 6px;
+  appearance: none;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+.side-switch button {
+  min-width: 56px;
+  padding: 0 12px;
+  background: transparent;
+  color: #f4f0e6;
+}
+
+.side-switch button.is-active {
+  background: #f4c64f;
+  color: #141008;
+}
+
+.close-project-button {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(8, 14, 13, 0.78);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
+  color: #f4f0e6;
+  backdrop-filter: blur(8px);
+}
+
+.side-switch button:hover,
+.close-project-button:hover {
+  filter: brightness(1.08);
+}
+
+.hidden-file-input {
+  display: none;
+}
+
 .viewer-status {
   position: absolute;
   inset: 0;
   display: grid;
   place-content: center;
-  gap: 8px;
+  gap: 12px;
   padding: 24px;
   color: #f5efe1;
   background: rgba(7, 11, 10, 0.82);
@@ -40,9 +148,49 @@
   font-size: 0.88rem;
 }
 
+.viewer-error {
+  color: #ffb7a8 !important;
+}
+
+.import-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.primary-import-button,
+.secondary-import-button {
+  min-width: 132px;
+  height: 38px;
+  border-radius: 7px;
+  appearance: none;
+  font-size: 0.88rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.primary-import-button {
+  border: 0;
+  background: #f4c64f;
+  color: #141008;
+}
+
+.secondary-import-button {
+  border: 1px solid rgba(245, 239, 225, 0.24);
+  background: rgba(245, 239, 225, 0.08);
+  color: #f5efe1;
+}
+
+.primary-import-button:hover,
+.secondary-import-button:hover {
+  filter: brightness(1.08);
+}
+
 .component-panel {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto minmax(0, 1fr);
   min-width: 0;
   max-height: 100vh;
   background: #f4f0e7;
@@ -54,60 +202,149 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 20px 18px 16px;
+  padding: 12px 14px 10px;
   border-bottom: 1px solid rgba(23, 27, 32, 0.12);
 }
 
+.panel-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.panel-title-text {
+  min-width: 0;
+}
+
+.bom-github-link:hover {
+  border-color: rgba(23, 27, 32, 0.22);
+  background: #f7df91;
+}
+
 .panel-label {
-  margin: 0 0 4px;
+  margin: 0 0 2px;
+  overflow: hidden;
   color: #59625f;
-  font-size: 0.74rem;
+  font-size: 0.68rem;
   font-weight: 700;
+  line-height: 1.1;
   letter-spacing: 0.08em;
+  text-overflow: ellipsis;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .panel-header h1 {
   margin: 0;
-  font-size: 1.35rem;
+  font-size: 1.15rem;
   line-height: 1.1;
 }
 
 .count-badge {
   display: inline-grid;
-  min-width: 42px;
-  height: 32px;
+  min-width: 36px;
+  height: 28px;
   place-content: center;
   border-radius: 6px;
   background: #18211f;
   color: #f6d779;
-  font-size: 0.86rem;
+  font-size: 0.78rem;
   font-weight: 800;
 }
 
 .selection-summary {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 4px 12px;
-  padding: 14px 18px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 4px 12px;
   border-bottom: 1px solid rgba(23, 27, 32, 0.12);
   background: #ebe4d8;
 }
 
 .selection-summary span {
   color: #5a625f;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
 }
 
 .selection-summary strong {
+  overflow: hidden;
   color: #171b20;
-  font-size: 1rem;
+  font-size: 0.86rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.component-search {
+  position: relative;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(23, 27, 32, 0.12);
+  background: #f4f0e7;
+}
+
+.component-search input {
+  width: 100%;
+  height: 36px;
+  min-width: 0;
+  padding: 0 40px 0 12px;
+  border: 1px solid rgba(23, 27, 32, 0.16);
+  border-radius: 7px;
+  appearance: none;
+  background: #fffaf0;
+  color: #171b20;
+  font-size: 0.88rem;
+  outline: none;
+}
+
+.component-search input:focus {
+  border-color: rgba(190, 80, 28, 0.74);
+  box-shadow: 0 0 0 3px rgba(246, 198, 107, 0.36);
+}
+
+.component-search input:disabled {
+  background: rgba(255, 250, 240, 0.54);
+  color: #858c89;
+}
+
+.component-search button {
+  position: absolute;
+  top: 50%;
+  right: 18px;
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-content: center;
+  border: 0;
+  border-radius: 5px;
+  appearance: none;
+  background: rgba(24, 33, 31, 0.08);
+  color: #2b302e;
+  font-size: 0.78rem;
+  font-weight: 800;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.component-search button:hover {
+  background: rgba(24, 33, 31, 0.14);
 }
 
 .component-list {
   min-height: 0;
   overflow: auto;
   padding: 8px;
+}
+
+.empty-component-list {
+  display: grid;
+  min-height: 140px;
+  place-content: center;
+  padding: 24px;
+  color: #68716d;
+  font-size: 0.88rem;
+  text-align: center;
 }
 
 .component-row {
@@ -220,5 +457,21 @@
 
   .component-panel {
     max-height: 30vh;
+  }
+}
+
+@media (max-width: 900px) {
+  .project-title {
+    top: 56px;
+    max-width: calc(100% - 24px);
+  }
+
+  .viewer-actions {
+    right: 8px;
+  }
+
+  .side-switch button {
+    min-width: 48px;
+    padding: 0 10px;
   }
 }

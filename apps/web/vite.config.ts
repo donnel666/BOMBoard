@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
+import yaml from '@rollup/plugin-yaml'
 
 const repoRoot = fileURLToPath(new URL('../../', import.meta.url))
 const tmpRoot = resolve(repoRoot, 'tmp')
@@ -94,5 +95,5 @@ function contentType(path: string): string {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), sampleDataPlugin()],
+  plugins: [react(), yaml(), sampleDataPlugin()],
 })

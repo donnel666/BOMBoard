@@ -4,6 +4,7 @@ export function classifyBomCoordinateFileName(fileName: string): BomCoordinateFi
   const name = baseName(fileName);
   const lowerName = name.toLowerCase();
   const extension = getExtension(lowerName);
+  const searchableName = lowerName.replaceAll(/[-_.]/g, " ");
 
   if (extension !== ".csv") {
     return classification(name, extension, "unknown", "not a CSV BOM/coordinate candidate");
@@ -14,12 +15,16 @@ export function classifyBomCoordinateFileName(fileName: string): BomCoordinateFi
   }
 
   if (
+    searchableName.includes("centroid") ||
+    /\bcpl\b/.test(searchableName) ||
     lowerName.includes("pickplace") ||
     lowerName.includes("pick-place") ||
     lowerName.includes("pick_places") ||
     lowerName.includes("placement") ||
+    /\bpos\b/.test(searchableName) ||
     lowerName.includes("coordinate") ||
-    lowerName.includes("coords")
+    lowerName.includes("coords") ||
+    /\bxy\b/.test(searchableName)
   ) {
     return classification(name, extension, "coordinates", "coordinate/pick-place CSV filename");
   }

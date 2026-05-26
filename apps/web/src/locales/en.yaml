@@ -1,0 +1,59 @@
+app:
+  name: BOMBoard
+aria:
+  boardSide: Board side
+  boardViewControls: Board view controls
+  clearBomSearch: Clear BOM search
+  closeProject: Close project
+  componentDesignators: "{{label}} components"
+  openSourceProject: Open source project on GitHub
+  searchBom: Search BOM by tags, package, or name
+componentPanel:
+  components: Components
+  matchedCount: "{{count}} matched"
+  noPlacedComponents: No placed components were found in the selected project.
+  noProjectLoaded: No project loaded
+  noProjectOpen: No project is open.
+  noSearchMatches: No components match the search.
+  none: None
+  searchPlaceholder: Search tags, package, name
+  selected: Selected
+controls:
+  bottom: Bottom
+  top: Top
+errors:
+  emptyBomDesignators: The BOM CSV does not contain usable component designators.
+  emptyCoordinatePlacements: The coordinate CSV does not contain usable component placements.
+  failedClearSavedProject: Failed to clear saved project.
+  failedOpenProjectStorage: Failed to open project storage.
+  failedReadSavedProject: Failed to read saved project.
+  failedRestore: "Failed to restore the saved project: {{error}}"
+  failedSaveProject: Failed to save project.
+  indexedDbUnavailable: IndexedDB is not available in this browser.
+  missingBomFile: The selected project is missing a BOM CSV file.
+  missingCoordinateFile: The selected project is missing a coordinate CSV file.
+  missingDrillFile: The selected project is missing an Excellon drill file.
+  missingGerberFiles: The selected project is missing renderable Gerber files.
+  missingReadableFiles: The selected project does not contain any readable files.
+  projectOpenedPersistFailed: "Project opened, but browser storage could not persist it: {{error}}"
+  savedProjectClearAborted: Saved project clear was aborted.
+  savedProjectReadAborted: Saved project read was aborted.
+  savedProjectWriteAborted: Saved project write was aborted.
+  viewerContainerUnavailable: Viewer container is not available.
+import:
+  directoryUnsupported: Directory selection is not supported in this browser. Choose a ZIP package instead.
+  localProjectPrompt: Select a local ZIP package or directory containing Gerber, drill, coordinate CSV, and BOM CSV files.
+  openProject: Open a project
+  selectDirectory: Select Directory
+  selectZip: Select ZIP
+  selectedDirectory: Selected directory
+status:
+  checkingSavedWorkspace: Checking saved workspace
+  defaultImportPrompt: Select a ZIP package or directory to begin.
+  loadingProject: Loading project
+  projectCouldNotOpen: Project could not be opened
+  reading: "Reading {{sourceName}}"
+  ready: Ready
+  renderingBoard: Rendering board
+  savingProject: Saving project
+  validatingProjectFiles: Validating project files

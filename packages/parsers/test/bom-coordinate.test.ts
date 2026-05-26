@@ -18,6 +18,18 @@ describe("BOM/coordinate file classification", () => {
       kind: "coordinates",
       extension: ".csv",
     });
+    expect(classifyBomCoordinateFileName("board-XY.csv")).toMatchObject({
+      kind: "coordinates",
+      extension: ".csv",
+    });
+    expect(classifyBomCoordinateFileName("assembly-CPL.csv")).toMatchObject({
+      kind: "coordinates",
+      extension: ".csv",
+    });
+    expect(classifyBomCoordinateFileName("centroid.csv")).toMatchObject({
+      kind: "coordinates",
+      extension: ".csv",
+    });
     expect(classifyBomCoordinateFileName("board.gtl")).toMatchObject({
       kind: "unknown",
     });
