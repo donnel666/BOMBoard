@@ -14,7 +14,7 @@
   "scripts": {
     "prebuild": "pnpm --filter @bomboard/parsers build",
     "pretypecheck": "pnpm --filter @bomboard/parsers build",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && cp src/package-rules.json dist/package-rules.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

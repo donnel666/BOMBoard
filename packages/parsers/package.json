@@ -12,12 +12,14 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && cp src/gerber/layer-rules.json dist/gerber/layer-rules.json && cp src/bom-coordinate/table-rules.json dist/bom-coordinate/table-rules.json",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@tracespace/core": "5.0.0-alpha.0",
+    "fast-xml-parser": "^5.8.0",
+    "fflate": "0.8.3",
     "papaparse": "^5.5.3"
   },
   "devDependencies": {

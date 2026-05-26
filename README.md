@@ -10,7 +10,7 @@ The web app runs locally in the browser. It loads a ZIP package or a local direc
 
 - Local ZIP package or directory loading. No server upload is required.
 - Gerber and Excellon drill rendering.
-- BOM CSV and coordinate CSV parsing.
+- BOM CSV/XLSX and coordinate CSV/XLSX parsing.
 - Cross-probing between the board view and component list.
 - BOM fuzzy search by designator, package, and component name.
 - BOM sorting optimized for common SMD resistors, capacitors, and inductors.

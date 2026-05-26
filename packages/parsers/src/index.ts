@@ -7,12 +7,16 @@ export {
   parsePlacementSide,
 } from "./bom-coordinate/coordinate-parser.js";
 export {decodeBomCoordinateText} from "./bom-coordinate/csv.js";
-export {classifyBomCoordinateFileName} from "./bom-coordinate/file-types.js";
+export {
+  classifyBomCoordinateFile,
+  classifyBomCoordinateFileName,
+} from "./bom-coordinate/file-types.js";
 export {
   mergeBomAndCoordinates,
   parseBomCoordinateProject,
 } from "./bom-coordinate/project-parser.js";
 export {
+  classifyGerber2DFile,
   classifyGerber2DFileName,
   gerber2DFileTypePriorities,
   selectGerber2DFiles,

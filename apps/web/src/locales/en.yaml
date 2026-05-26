@@ -22,16 +22,16 @@ controls:
   bottom: Bottom
   top: Top
 errors:
-  emptyBomDesignators: The BOM CSV does not contain usable component designators.
-  emptyCoordinatePlacements: The coordinate CSV does not contain usable component placements.
+  emptyBomDesignators: The BOM file does not contain usable component designators.
+  emptyCoordinatePlacements: The coordinate file does not contain usable component placements.
   failedClearSavedProject: Failed to clear saved project.
   failedOpenProjectStorage: Failed to open project storage.
   failedReadSavedProject: Failed to read saved project.
   failedRestore: "Failed to restore the saved project: {{error}}"
   failedSaveProject: Failed to save project.
   indexedDbUnavailable: IndexedDB is not available in this browser.
-  missingBomFile: The selected project is missing a BOM CSV file.
-  missingCoordinateFile: The selected project is missing a coordinate CSV file.
+  missingBomFile: The selected project is missing a BOM CSV/XLSX file.
+  missingCoordinateFile: The selected project is missing a coordinate CSV/XLSX file.
   missingDrillFile: The selected project is missing an Excellon drill file.
   missingGerberFiles: The selected project is missing renderable Gerber files.
   missingReadableFiles: The selected project does not contain any readable files.
@@ -42,7 +42,7 @@ errors:
   viewerContainerUnavailable: Viewer container is not available.
 import:
   directoryUnsupported: Directory selection is not supported in this browser. Choose a ZIP package instead.
-  localProjectPrompt: Select a local ZIP package or directory containing Gerber, drill, coordinate CSV, and BOM CSV files.
+  localProjectPrompt: Select a local ZIP package or directory containing Gerber, drill, coordinate CSV/XLSX, and BOM CSV/XLSX files.
   openProject: Open a project
   selectDirectory: Select Directory
   selectZip: Select ZIP
@@ -50,6 +50,7 @@ import:
 status:
   checkingSavedWorkspace: Checking saved workspace
   defaultImportPrompt: Select a ZIP package or directory to begin.
+  loadingFootprintLibrary: Loading footprint library
   loadingProject: Loading project
   projectCouldNotOpen: Project could not be opened
   reading: "Reading {{sourceName}}"

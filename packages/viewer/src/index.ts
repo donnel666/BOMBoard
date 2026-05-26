@@ -1,6 +1,12 @@
 export {BoardViewer, createBoardViewer} from "./board-viewer.js";
 export {defaultBoardViewerColors} from "./colors.js";
 export {
+  emptyFootprintLibrary,
+  loadFootprintLibraryForComponents,
+  normalizeFootprintKey,
+  resolveFootprintCandidates,
+} from "./footprint-library.js";
+export {
   createBoardViewerModel,
   defaultComponentSimilarityKey,
   highlightedDesignatorsForSelection,
@@ -32,3 +38,12 @@ export type {
   ViewerPoint,
   ViewportTransform,
 } from "./types.js";
+
+export type {
+  CompactFootprintFeature,
+  CompactFootprintShape,
+  FootprintLibrary,
+  FootprintLibraryCandidate,
+  FootprintLibraryEntry,
+  FootprintLibraryLoadOptions,
+} from "./footprint-library.js";

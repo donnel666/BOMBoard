@@ -22,16 +22,16 @@ controls:
   bottom: 底层
   top: 顶层
 errors:
-  emptyBomDesignators: BOM CSV 中没有可用的元件位号。
-  emptyCoordinatePlacements: 坐标 CSV 中没有可用的元件坐标。
+  emptyBomDesignators: BOM 文件中没有可用的元件位号。
+  emptyCoordinatePlacements: 坐标文件中没有可用的元件坐标。
   failedClearSavedProject: 清除已保存项目失败。
   failedOpenProjectStorage: 打开项目存储失败。
   failedReadSavedProject: 读取已保存项目失败。
   failedRestore: "恢复已保存项目失败：{{error}}"
   failedSaveProject: 保存项目失败。
   indexedDbUnavailable: 当前浏览器不支持 IndexedDB。
-  missingBomFile: 所选项目缺少 BOM CSV 文件。
-  missingCoordinateFile: 所选项目缺少坐标 CSV 文件。
+  missingBomFile: 所选项目缺少 BOM CSV/XLSX 文件。
+  missingCoordinateFile: 所选项目缺少坐标 CSV/XLSX 文件。
   missingDrillFile: 所选项目缺少 Excellon 钻孔文件。
   missingGerberFiles: 所选项目缺少可渲染的 Gerber 文件。
   missingReadableFiles: 所选项目中没有可读取的文件。
@@ -42,7 +42,7 @@ errors:
   viewerContainerUnavailable: 查看器容器不可用。
 import:
   directoryUnsupported: 当前浏览器不支持选择目录，请改用 ZIP 包。
-  localProjectPrompt: 请选择本地 ZIP 包或目录，需包含 Gerber、钻孔、坐标 CSV 和 BOM CSV 文件。
+  localProjectPrompt: 请选择本地 ZIP 包或目录，需包含 Gerber、钻孔、坐标 CSV/XLSX 和 BOM CSV/XLSX 文件。
   openProject: 打开项目
   selectDirectory: 选择目录
   selectZip: 选择 ZIP
@@ -50,6 +50,7 @@ import:
 status:
   checkingSavedWorkspace: 正在检查已保存的工作区
   defaultImportPrompt: 请选择 ZIP 包或目录开始。
+  loadingFootprintLibrary: 正在加载封装库
   loadingProject: 正在加载项目
   projectCouldNotOpen: 项目无法打开
   reading: "正在读取 {{sourceName}}"

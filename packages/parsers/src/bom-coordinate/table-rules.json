@@ -1,0 +1,137 @@
+{
+  "formats": [
+    {
+      "id": "altium-bom",
+      "kind": "bom",
+      "software": "Altium Designer",
+      "priority": 90,
+      "description": "Altium BOM exports with designator, comment, footprint, LibRef, and quantity columns.",
+      "match": {
+        "requiredFields": ["designator"],
+        "anyFields": ["quantity", "libRef", "comment", "description", "footprint"],
+        "rejectFields": ["midX", "midY"]
+      },
+      "fields": {
+        "designator": ["Designator", "Reference Designator", "Reference Designators"],
+        "comment": ["Comment", "Value", "Name"],
+        "description": ["Description"],
+        "footprint": ["Footprint", "Package", "Encapsulation"],
+        "libRef": ["LibRef", "Manufacturer Part", "Manufacturer Part Number", "Supplier Part", "Device"],
+        "pins": ["Pins"],
+        "quantity": ["Quantity", "Qty"],
+        "midX": ["Mid X", "Center X", "Centroid X", "Pos X", "PosX", "Position X", "X"],
+        "midY": ["Mid Y", "Center Y", "Centroid Y", "Pos Y", "PosY", "Position Y", "Y"]
+      }
+    },
+    {
+      "id": "jlc-easyeda-bom",
+      "kind": "bom",
+      "software": "JLCPCB / EasyEDA",
+      "priority": 100,
+      "description": "JLCPCB and EasyEDA BOM exports using English or Chinese column names.",
+      "match": {
+        "requiredFields": ["designator"],
+        "anyFields": ["quantity", "libRef", "comment", "description", "footprint"],
+        "rejectFields": ["midX", "midY"]
+      },
+      "fields": {
+        "designator": ["Designator", "Reference Designator", "Reference Designators", "RefDes", "位号"],
+        "comment": ["Comment", "Value", "Name", "名称"],
+        "description": ["Description", "LCSC Part Name", "描述"],
+        "footprint": ["Footprint", "Package", "Encapsulation", "封装"],
+        "libRef": ["LibRef", "Manufacturer Part", "Manufacturer Part Number", "Supplier Part", "Device", "料号"],
+        "pins": ["Pins"],
+        "quantity": ["Quantity", "Qty", "数量"],
+        "midX": ["Mid X", "MidX", "Center X", "Centroid X", "Pos X", "PosX", "Position X", "X", "中心X", "X坐标"],
+        "midY": ["Mid Y", "MidY", "Center Y", "Centroid Y", "Pos Y", "PosY", "Position Y", "Y", "中心Y", "Y坐标"]
+      }
+    },
+    {
+      "id": "kicad-bom",
+      "kind": "bom",
+      "software": "KiCad",
+      "priority": 80,
+      "description": "KiCad BOM plugin exports with Reference/Value/Footprint/Qty style columns.",
+      "match": {
+        "requiredFields": ["designator"],
+        "anyFields": ["quantity", "comment", "description", "footprint", "libRef"],
+        "rejectFields": ["midX", "midY"]
+      },
+      "fields": {
+        "designator": ["Reference", "References", "Ref", "Refs", "Designator"],
+        "comment": ["Value", "Val", "Comment"],
+        "description": ["Description", "Part", "Part Description"],
+        "footprint": ["Footprint", "Package"],
+        "libRef": ["MPN", "Manufacturer Part Number", "Manufacturer Part", "Part Number", "LCSC"],
+        "quantity": ["Qty", "Quantity", "Qnty"],
+        "midX": ["PosX", "Pos X", "Position X", "Mid X", "Center X", "X"],
+        "midY": ["PosY", "Pos Y", "Position Y", "Mid Y", "Center Y", "Y"]
+      }
+    },
+    {
+      "id": "altium-pick-place",
+      "kind": "coordinates",
+      "software": "Altium Designer",
+      "priority": 90,
+      "description": "Altium pick-and-place exports with center, rotation, layer, and footprint columns.",
+      "match": {
+        "requiredFields": ["designator", "midX", "midY"]
+      },
+      "fields": {
+        "designator": ["Designator", "RefDes", "Reference Designator"],
+        "footprint": ["Footprint", "Package", "Encapsulation"],
+        "midX": ["Mid X", "Center X", "Centroid X", "Pos X", "Position X", "Center-X(mm)", "Location X", "X"],
+        "midY": ["Mid Y", "Center Y", "Centroid Y", "Pos Y", "Position Y", "Center-Y(mm)", "Location Y", "Y"],
+        "refX": ["Ref X", "Reference X", "Origin X", "Ref-X(mm)"],
+        "refY": ["Ref Y", "Reference Y", "Origin Y", "Ref-Y(mm)"],
+        "padX": ["Pad X", "Pin 1 X", "Pin1 X", "Pad-X(mm)"],
+        "padY": ["Pad Y", "Pin 1 Y", "Pin1 Y", "Pad-Y(mm)"],
+        "layer": ["Layer", "Side", "Board Side", "Placement Side"],
+        "rotation": ["Rotation", "Rot", "Angle", "Theta"],
+        "comment": ["Comment", "Value", "Name"]
+      }
+    },
+    {
+      "id": "jlc-easyeda-pick-place",
+      "kind": "coordinates",
+      "software": "JLCPCB / EasyEDA",
+      "priority": 100,
+      "description": "JLCPCB and EasyEDA pick-and-place exports using English or Chinese column names.",
+      "match": {
+        "requiredFields": ["designator", "midX", "midY"]
+      },
+      "fields": {
+        "designator": ["Designator", "RefDes", "位号"],
+        "footprint": ["Footprint", "Package", "Encapsulation", "封装"],
+        "midX": ["Mid X", "MidX", "Center X", "Centroid X", "Pos X", "Position X", "X", "中心X", "X坐标"],
+        "midY": ["Mid Y", "MidY", "Center Y", "Centroid Y", "Pos Y", "Position Y", "Y", "中心Y", "Y坐标"],
+        "refX": ["Ref X", "RefX", "Reference X"],
+        "refY": ["Ref Y", "RefY", "Reference Y"],
+        "padX": ["Pad X", "PadX", "Pin 1 X", "Pin1 X"],
+        "padY": ["Pad Y", "PadY", "Pin 1 Y", "Pin1 Y"],
+        "layer": ["Layer", "Side", "Board Side", "层", "板面"],
+        "rotation": ["Rotation", "Rot", "Angle", "旋转", "角度"],
+        "comment": ["Comment", "Value", "Name", "LCSC Part Name", "名称"]
+      }
+    },
+    {
+      "id": "kicad-position",
+      "kind": "coordinates",
+      "software": "KiCad",
+      "priority": 80,
+      "description": "KiCad position file exports with Reference/PosX/PosY/Rot/Side columns.",
+      "match": {
+        "requiredFields": ["designator", "midX", "midY"]
+      },
+      "fields": {
+        "designator": ["Reference", "Ref", "Designator"],
+        "footprint": ["Package", "Footprint"],
+        "midX": ["PosX", "Pos X", "Position X", "X"],
+        "midY": ["PosY", "Pos Y", "Position Y", "Y"],
+        "layer": ["Side", "Layer"],
+        "rotation": ["Rot", "Rotation", "Angle"],
+        "comment": ["Val", "Value", "Comment"]
+      }
+    }
+  ]
+}

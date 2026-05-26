@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } f
 import { unzipSync } from 'fflate'
 import { useTranslation } from 'react-i18next'
 import {
-  classifyBomCoordinateFileName,
+  classifyBomCoordinateFile,
   parseBomCoordinateProject,
   parseGerber2DProject,
   selectGerber2DFiles,
@@ -11,6 +11,7 @@ import {
 } from '@bomboard/parsers'
 import {
   createBoardViewer,
+  loadFootprintLibraryForComponents,
   type BoardViewer,
   type BoardViewerSelectionChange,
   type BoardViewerSide,
@@ -23,7 +24,7 @@ interface ComponentRow {
   designatorLabel: string
   comment: string
   footprint: string
-  side: string
+  side: ComponentRowSide
 }
 
 interface ProjectImportFile {
@@ -58,6 +59,8 @@ interface OpenProjectOptions {
 type Translate = (key: string, options?: Record<string, unknown>) => string
 type ImportStatus = 'idle' | 'loading' | 'ready' | 'failed'
 type PassiveKind = 'resistor' | 'capacitor' | 'inductor'
+type ComponentRowSide = BoardViewerSide | 'unknown' | 'mixed'
+type ComponentSelectionMode = 'group' | 'single'
 
 interface PassiveSortKey {
   kind: PassiveKind | null
@@ -125,6 +128,7 @@ function App() {
   const translate = useCallback<Translate>((key, options) => t(key, options), [t])
   const containerRef = useRef<HTMLDivElement | null>(null)
   const viewerRef = useRef<BoardViewer | null>(null)
+  const componentListRef = useRef<HTMLDivElement | null>(null)
   const zipInputRef = useRef<HTMLInputElement | null>(null)
   const directoryInputRef = useRef<HTMLInputElement | null>(null)
   const importRunRef = useRef(0)
@@ -160,15 +164,34 @@ function App() {
     () => new Set(highlightedDesignators),
     [highlightedDesignators]
   )
+  const bomSearchActive = useMemo(
+    () => searchTokens(bomSearch).length > 0,
+    [bomSearch]
+  )
+  const sideComponents = useMemo(
+    () => filterComponentRowsBySide(components, side),
+    [components, side]
+  )
   const filteredComponents = useMemo(
-    () => filterComponentRows(components, bomSearch),
-    [components, bomSearch]
+    () => filterComponentRows(bomSearchActive ? components : sideComponents, bomSearch),
+    [bomSearch, bomSearchActive, components, sideComponents]
   )
 
   const syncSelection = useCallback((event: BoardViewerSelectionChange) => {
     setSelectedDesignator(event.state.selectedDesignator)
     setHighlightedDesignators(event.state.highlightedDesignators)
   }, [])
+
+  useEffect(() => {
+    if (!selectedDesignator) return
+
+    const list = componentListRef.current
+    if (!list) return
+
+    const selectedRow = Array.from(list.querySelectorAll<HTMLElement>('.component-row'))
+      .find(row => (row.dataset.designators ?? '').split('\t').includes(selectedDesignator))
+    selectedRow?.scrollIntoView({ block: 'nearest' })
+  }, [filteredComponents, selectedDesignator])
 
   const openProject = useCallback(async (
     sourceName: string,
@@ -204,11 +227,19 @@ function App() {
         throw new Error(translate('errors.viewerContainerUnavailable'))
       }
 
+      setStatusMessage(translate('status.loadingFootprintLibrary'))
+      const footprintLibrary = await loadFootprintLibraryForComponents(
+        project.bomCoordinates.components,
+        { baseUrl: `${import.meta.env.BASE_URL}footprints` }
+      )
+      if (importRunRef.current !== runId) return
+
       setStatusMessage(translate('status.renderingBoard'))
       const viewer = await createBoardViewer({
         container: containerRef.current,
         gerber: project.gerber,
         bomCoordinates: project.bomCoordinates,
+        footprintLibrary,
         side: restoredState?.side ?? 'top',
         showSideControls: false,
         onSelectionChange: syncSelection,
@@ -349,6 +380,32 @@ function App() {
     })
   }
 
+  const selectBomComponent = (
+    component: ComponentRow,
+    designator: string,
+    mode: ComponentSelectionMode
+  ) => {
+    const viewer = viewerRef.current
+    if (!viewer) return
+
+    const run = async () => {
+      if (isBoardViewerSide(component.side) && viewer.getState().side !== component.side) {
+        await viewer.setSide(component.side)
+        setSide(viewer.getState().side)
+      }
+
+      if (mode === 'single') {
+        viewer.selectSingleComponent(designator)
+      } else {
+        viewer.selectComponent(designator)
+      }
+    }
+
+    void run().catch(unknownError => {
+      setError(errorMessage(unknownError))
+    })
+  }
+
   const renderComponentRows = () => {
     if (components.length === 0) {
       return (
@@ -356,6 +413,14 @@ function App() {
           {status === 'ready'
             ? t('componentPanel.noPlacedComponents')
             : t('componentPanel.noProjectOpen')}
+        </div>
+      )
+    }
+
+    if (!bomSearchActive && sideComponents.length === 0) {
+      return (
+        <div className="empty-component-list">
+          {t('componentPanel.noPlacedComponents')}
         </div>
       )
     }
@@ -371,6 +436,11 @@ function App() {
     return filteredComponents.map(component => {
       const selected = component.designators.includes(selectedDesignator ?? '')
       const matched = component.designators.some(designator => highlighted.has(designator))
+      const crossSideLabel = bomSearchActive
+        && isBoardViewerSide(component.side)
+        && component.side !== side
+        ? t(`controls.${component.side}`)
+        : null
       const groupSelected = selected
         && component.designators.every(designator => highlighted.has(designator))
         && highlightedDesignators.every(designator => component.designators.includes(designator))
@@ -378,16 +448,21 @@ function App() {
       return (
         <div
           key={component.designatorLabel}
+          data-designators={component.designators.join('\t')}
           className={[
             'component-row',
             groupSelected ? 'is-selected' : '',
             matched ? 'is-matched' : '',
+            crossSideLabel ? 'is-cross-side' : '',
           ].filter(Boolean).join(' ')}
         >
           <div
             className="component-designators"
             aria-label={t('aria.componentDesignators', { label: component.designatorLabel })}
           >
+            {crossSideLabel && (
+              <span className="component-side-badge">{crossSideLabel}</span>
+            )}
             {component.designators.map(designator => {
               const tagSelected = selectedDesignator === designator
               const tagOnlySelected = tagSelected
@@ -407,7 +482,7 @@ function App() {
                     if (tagOnlySelected) {
                       viewerRef.current?.clearSelection()
                     } else {
-                      viewerRef.current?.selectSingleComponent(designator)
+                      selectBomComponent(component, designator, 'single')
                     }
                   }}
                 >
@@ -421,10 +496,11 @@ function App() {
             type="button"
             className="component-identity"
             onClick={() => {
-              if (groupSelected) {
+              if (selected) {
                 viewerRef.current?.clearSelection()
               } else {
-                viewerRef.current?.selectComponent(component.designators[0] ?? null)
+                const primaryDesignator = component.designators[0]
+                if (primaryDesignator) selectBomComponent(component, primaryDesignator, 'group')
               }
             }}
           >
@@ -585,7 +661,7 @@ function App() {
           )}
         </div>
 
-        <div className="component-list">
+        <div ref={componentListRef} className="component-list">
           {renderComponentRows()}
         </div>
       </aside>
@@ -594,10 +670,8 @@ function App() {
 }
 
 async function loadZipPackage(file: File): Promise<ProjectImportFile[]> {
-  const unzipped = unzipSync(new Uint8Array(await file.arrayBuffer()))
-  return Object.entries(unzipped)
-    .map(([name, bytes]) => ({ name: normalizePath(name), bytes }))
-    .filter(isImportFile)
+  const files = unzipImportFiles(new Uint8Array(await file.arrayBuffer()))
+  return expandNestedZipFiles(files)
 }
 
 async function loadDirectoryFiles(files: readonly File[]): Promise<ProjectImportFile[]> {
@@ -607,7 +681,7 @@ async function loadDirectoryFiles(files: readonly File[]): Promise<ProjectImport
     file,
   })))
 
-  return loaded.filter(isImportFile)
+  return expandNestedZipFiles(loaded.filter(isImportFile))
 }
 
 async function savePersistedProject(
@@ -824,6 +898,13 @@ function filterComponentRows(rows: readonly ComponentRow[], query: string): Comp
   return rows.filter(row => tokens.every(token => componentRowMatchesSearch(row, token)))
 }
 
+function filterComponentRowsBySide(
+  rows: readonly ComponentRow[],
+  side: BoardViewerSide
+): ComponentRow[] {
+  return rows.filter(row => row.side === side)
+}
+
 function componentRowMatchesSearch(row: ComponentRow, token: string): boolean {
   const fields = [
     row.designatorLabel,
@@ -873,7 +954,7 @@ function selectBomCoordinateFile(
   kind: 'bom' | 'coordinates'
 ): ProjectImportFile | null {
   const matches = files
-    .filter(file => classifyBomCoordinateFileName(file.name).kind === kind)
+    .filter(file => classifyBomCoordinateFile({ name: file.name, bytes: file.bytes }).kind === kind)
     .sort((left, right) => left.name.localeCompare(right.name, undefined, {
       numeric: true,
       sensitivity: 'base',
@@ -905,6 +986,46 @@ function isImportFile(file: ProjectImportFile): boolean {
   if (name.startsWith('__MACOSX/') || name.includes('/__MACOSX/')) return false
   if (fileName.startsWith('.')) return false
   return true
+}
+
+function expandNestedZipFiles(
+  files: readonly ProjectImportFile[],
+  depth = 0
+): ProjectImportFile[] {
+  if (depth > 2) return [...files]
+
+  return files.flatMap(file => {
+    if (!isZipFileName(file.name)) return [file]
+
+    try {
+      return expandNestedZipFiles(unzipImportFiles(file.bytes, zipEntryPrefix(file.name)), depth + 1)
+    } catch {
+      return []
+    }
+  })
+}
+
+function unzipImportFiles(bytes: Uint8Array, prefix = ''): ProjectImportFile[] {
+  const unzipped = unzipSync(bytes)
+  return Object.entries(unzipped)
+    .map(([name, entryBytes]) => ({
+      name: normalizePath(`${prefix}${name}`),
+      bytes: entryBytes,
+    }))
+    .filter(isImportFile)
+}
+
+function isZipFileName(name: string): boolean {
+  return baseName(name).toLowerCase().endsWith('.zip')
+}
+
+function zipEntryPrefix(name: string): string {
+  const normalized = normalizePath(name)
+  const parentPath = normalized.includes('/')
+    ? `${normalized.slice(0, normalized.lastIndexOf('/') + 1)}`
+    : ''
+  const zipName = baseName(normalized).replace(/\.zip$/i, '')
+  return `${parentPath}${zipName}/`
 }
 
 function normalizePath(path: string): string {
@@ -962,16 +1083,17 @@ function componentRowKey(component: BomCoordinateComponent): string {
   const placement = component.placement
   const comment = normalizeComparable(component.bom?.comment ?? placement?.comment ?? '')
   const footprint = normalizeComparable(component.bom?.footprint ?? placement?.footprint ?? '')
+  const side = placement?.side ?? 'unknown'
 
-  if (comment && footprint) return `identity:${comment}|${footprint}`
-  return `component:${component.designator}`
+  if (comment && footprint) return `identity:${side}|${comment}|${footprint}`
+  return `component:${side}|${component.designator}`
 }
 
 function normalizeComparable(value: string): string {
   return value.trim().toUpperCase()
 }
 
-function mergeSide(left: string, right: string): string {
+function mergeSide(left: ComponentRowSide, right: ComponentRowSide): ComponentRowSide {
   if (left === right) return left
   if (left === 'unknown') return right
   if (right === 'unknown') return left

@@ -34,9 +34,9 @@ export async function parseGerber2DProject(
   const warnings: string[] = [];
 
   for (const {input, classification} of selection.tracespaceFiles) {
-    const traceInput = input.path ?? input.file;
+    const traceInput = traceInputFor(input);
     if (!traceInput) {
-      warnings.push(`Skipping ${input.name}: no path or File object was provided`);
+      warnings.push(`Skipping ${input.name}: no path, File object, or text was provided`);
       continue;
     }
 
@@ -65,6 +65,9 @@ export async function parseGerber2DProject(
 
     const parsed = parseExcellonDrill(input.text, input.name);
     warnings.push(...parsed.warnings);
+    if (parsed.hits.length === 0) {
+      warnings.push(`Drill file ${input.name} did not contain any drill hits.`);
+    }
     return [parsed];
   });
 
@@ -85,6 +88,16 @@ export async function parseGerber2DProject(
     vias,
     warnings,
   };
+}
+
+function traceInputFor(input: Gerber2DInputFile): string | File | null {
+  if (input.path) return input.path;
+  if (input.file) return input.file;
+  if (input.text !== undefined && typeof File !== "undefined") {
+    return new File([input.text], baseName(input.name), {type: "text/plain"});
+  }
+
+  return null;
 }
 
 async function readTraceInputs(inputs: Array<string | File>): Promise<ReadResult> {

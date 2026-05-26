@@ -5,6 +5,7 @@ import {join} from "node:path";
 import {describe, expect, it} from "vitest";
 
 import {
+  classifyGerber2DFile,
   classifyGerber2DFileName,
   parseExcellonDrill,
   parseGerber2DProject,
@@ -39,41 +40,155 @@ describe("Gerber 2D file classification", () => {
       priority: 6,
       renderable: true,
     });
+    expect(classifyGerber2DFileName("board.gtp")).toMatchObject({
+      kind: "paste",
+      side: "top",
+      priority: 7,
+      renderable: true,
+    });
+    expect(classifyGerber2DFileName("board-F.Cu.gbr")).toMatchObject({
+      kind: "copper",
+      side: "top",
+      renderable: true,
+    });
+    expect(classifyGerber2DFileName("board-B.Paste.gbr")).toMatchObject({
+      kind: "paste",
+      side: "bottom",
+      renderable: true,
+    });
+    expect(classifyGerber2DFileName("board-Edge.Cuts.gbr")).toMatchObject({
+      kind: "profile",
+      side: "all",
+      renderable: true,
+    });
     expect(classifyGerber2DFileName("board-viainfo.txt")).toMatchObject({
       kind: "viaInfo",
       side: "all",
       renderable: false,
     });
+    expect(classifyGerber2DFileName("Gerber_DrillDrawingLayer.GDD")).toMatchObject({
+      kind: "support",
+      renderable: false,
+    });
   });
 
-  it("uses pad masters instead of top/bottom copper when both are present", () => {
+  it("sniffs text drill candidates by Excellon content", () => {
+    expect(classifyGerber2DFile({
+      name: "readme.txt",
+      text: "Fabrication notes only\nNo drill coordinates here.\n",
+    })).toMatchObject({
+      kind: "support",
+      renderable: false,
+    });
+    expect(classifyGerber2DFile({
+      name: "board.txt",
+      text: `M48
+;FILE_FORMAT=3:3
+METRIC,TZ
+T01C0.300
+%
+T01
+X005000Y005000
+`,
+    })).toMatchObject({
+      kind: "drill",
+      side: "all",
+      renderable: false,
+    });
+    expect(classifyGerber2DFile({
+      name: "board.drl",
+      text: `M48
+METRIC,TZ
+T01C0.300
+%
+X005000Y005000
+`,
+    })).toMatchObject({
+      kind: "drill",
+      side: "all",
+      renderable: false,
+    });
+  });
+
+  it("uses Gerber X2 FileFunction attributes before filename heuristics", () => {
+    expect(classifyGerber2DFile({
+      name: "any-name.gbr",
+      text: "%TF.FileFunction,Copper,L1,Top*%\n%MOMM*%\nM02*\n",
+    })).toMatchObject({
+      kind: "copper",
+      side: "top",
+      renderable: true,
+    });
+    expect(classifyGerber2DFile({
+      name: "random.gm1",
+      text: "%TF.FileFunction,Profile,NP*%\n%MOMM*%\nM02*\n",
+    })).toMatchObject({
+      kind: "profile",
+      side: "all",
+      renderable: true,
+    });
+    expect(classifyGerber2DFile({
+      name: "top-looking.gbr",
+      text: "%TF.FileFunction,AssemblyDrawing,Top*%\n%MOMM*%\nM02*\n",
+    })).toMatchObject({
+      kind: "support",
+      side: "top",
+      renderable: false,
+    });
+  });
+
+  it("keeps copper render layers when pad masters are also present", () => {
     const selection = selectGerber2DFiles(
       [
-        "board.gm",
-        "board.gpt",
-        "board.gpb",
-        "board.gtl",
-        "board.gbl",
-        "board.gts",
-        "board.gbs",
-        "board.gto",
-        "board.txt",
-        "board-viainfo.txt",
-        "status report.txt",
-      ].map(name => ({name, path: `/virtual/${name}`}))
+        ["board.gm", ""],
+        ["board.gpt", ""],
+        ["board.gpb", ""],
+        ["board.gtl", ""],
+        ["board.gbl", ""],
+        ["board.gts", ""],
+        ["board.gbs", ""],
+        ["board.gto", ""],
+        ["board.gtp", ""],
+        ["board.txt", "M48\n;FILE_FORMAT=3:3\nMETRIC,TZ\nT01C0.300\n%\nT01\nX005000Y005000\n"],
+        ["board-viainfo.txt", ""],
+        ["status report.txt", ""],
+      ].map(([name, text]) => ({name, path: `/virtual/${name}`, text}))
     );
 
     expect(selection.tracespaceFiles.map(row => row.classification.name)).toEqual([
       "board.gm",
       "board.gpt",
       "board.gpb",
+      "board.gtl",
+      "board.gbl",
       "board.gts",
       "board.gbs",
       "board.gto",
+      "board.gtp",
     ]);
     expect(selection.drillFiles.map(row => row.classification.name)).toEqual(["board.txt"]);
     expect(selection.viaInfoFiles.map(row => row.classification.name)).toEqual([
       "board-viainfo.txt",
+    ]);
+  });
+
+  it("selects neutral gerber filenames when X2 FileFunction declares a renderable layer", () => {
+    const selection = selectGerber2DFiles([
+      {
+        name: "unknown-one.gbr",
+        path: "/virtual/unknown-one.gbr",
+        text: "%TF.FileFunction,Paste,Bot*%\n%MOMM*%\nM02*\n",
+      },
+      {
+        name: "mechanical-one.gm1",
+        path: "/virtual/mechanical-one.gm1",
+        text: "%TF.FileFunction,Profile,NP*%\n%MOMM*%\nM02*\n",
+      },
+    ]);
+
+    expect(selection.tracespaceFiles.map(row => row.classification)).toEqual([
+      expect.objectContaining({name: "unknown-one.gbr", kind: "paste", side: "bottom"}),
+      expect.objectContaining({name: "mechanical-one.gm1", kind: "profile", side: "all"}),
     ]);
   });
 });

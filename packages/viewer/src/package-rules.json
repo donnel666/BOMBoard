@@ -1,0 +1,98 @@
+{
+  "exactPackages": [
+    {
+      "name": "0201",
+      "aliases": ["R0201", "C0201", "L0201", "LED0201", "D0201"],
+      "bodyMm": [0.6, 0.3],
+      "defaultPadCount": 2
+    },
+    {
+      "name": "0402",
+      "aliases": ["1005", "R0402", "C0402", "L0402", "LED0402", "D0402"],
+      "bodyMm": [1.0, 0.5],
+      "defaultPadCount": 2
+    },
+    {
+      "name": "0603",
+      "aliases": ["1608", "R0603", "C0603", "L0603", "LED0603", "D0603"],
+      "bodyMm": [1.6, 0.8],
+      "defaultPadCount": 2
+    },
+    {
+      "name": "0805",
+      "aliases": ["2012", "R0805", "C0805", "L0805", "LED0805", "D0805"],
+      "bodyMm": [2.0, 1.25],
+      "defaultPadCount": 2
+    },
+    {
+      "name": "1206",
+      "aliases": ["3216", "R1206", "C1206", "L1206", "LED1206", "D1206"],
+      "bodyMm": [3.2, 1.6],
+      "defaultPadCount": 2
+    },
+    {
+      "name": "1210",
+      "aliases": ["R1210", "C1210", "L1210", "LED1210", "D1210"],
+      "bodyMm": [3.2, 2.5],
+      "defaultPadCount": 2
+    },
+    {
+      "name": "1812",
+      "aliases": ["R1812", "C1812", "L1812", "LED1812", "D1812"],
+      "bodyMm": [4.5, 3.2],
+      "defaultPadCount": 2
+    }
+  ],
+  "families": [
+    {
+      "name": "explicit-pin-or-ball-count",
+      "pattern": "(?:^|[^A-Z0-9])(\\d{1,4})\\s*(?:PINS|PIN|BALLS|BALL|P)(?=$|[^A-Z0-9])",
+      "pinCountGroup": 1
+    },
+    {
+      "name": "sot-23-explicit-pins",
+      "pattern": "(?:^|[^A-Z0-9])SOT[-_ ]*23[-_ ]*(\\d{1,2})(?=$|[^A-Z0-9])",
+      "pinCountGroup": 1
+    },
+    {
+      "name": "count-after-package-family",
+      "prefixes": [
+        "FCCSP",
+        "TFBGA",
+        "CABGA",
+        "FBGA",
+        "BGA",
+        "LGA",
+        "CSP",
+        "WQFN",
+        "VQFN",
+        "QFN",
+        "DFN",
+        "LQFP",
+        "TQFP",
+        "QFP",
+        "SSOP",
+        "TSSOP",
+        "MSOP",
+        "SOIC",
+        "SOP",
+        "SOT",
+        "DIP"
+      ],
+      "pinCountGroup": 1
+    }
+  ],
+  "designatorDefaults": [
+    {
+      "prefixes": ["C", "R", "L", "FB", "F"],
+      "bodyMm": [1.6, 0.9],
+      "defaultPadCount": 2
+    }
+  ],
+  "geometryFallback": {
+    "padSourcePriority": ["padMaster", "paste", "solderMask", "copper"],
+    "smdPaddingMm": 0.28,
+    "throughHolePaddingMm": 1.0,
+    "minimumComponentHoleMm": 0.4
+  }
+}

@@ -375,6 +375,10 @@
   background: #f6c66b;
 }
 
+.component-row.is-cross-side {
+  border-color: rgba(24, 33, 31, 0.16);
+}
+
 .component-designators {
   display: flex;
   flex-wrap: wrap;
@@ -382,6 +386,17 @@
   align-self: center;
   gap: 4px;
   min-width: 0;
+}
+
+.component-side-badge {
+  align-self: center;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: #18211f;
+  color: #f6d779;
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1.25;
 }
 
 .component-tag {

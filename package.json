@@ -12,6 +12,8 @@
     "dev": "pnpm dev:web",
     "dev:web": "pnpm --filter @bomboard/web dev",
     "dev:desktop": "concurrently -k -n web,desktop -c cyan,yellow \"pnpm dev:web\" \"pnpm --filter @bomboard/desktop dev\"",
+    "build:footprints": "node scripts/build-footprint-library.mjs",
+    "scan:unmatched": "node scripts/scan-unmatched-footprints.mjs",
     "build": "pnpm -r --if-present build",
     "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r --if-present typecheck"

@@ -6,6 +6,7 @@ import type {
   ParsedBomCoordinateProject,
   ViewBox,
 } from "@bomboard/parsers";
+import type {FootprintLibrary} from "./footprint-library.js";
 
 export type BoardViewerSide = "top" | "bottom";
 
@@ -148,6 +149,7 @@ export interface BoardViewerOptions extends BoardViewerData {
   processColors?: Partial<Gerber2DProcessColors>;
   getSimilarityKey?: ComponentSimilarityKeyFn;
   getComponentSize?: ComponentSizeFn;
+  footprintLibrary?: FootprintLibrary;
   onStateChange?: BoardViewerEventListener<"statechange">;
   onSelectionChange?: BoardViewerEventListener<"selectionchange">;
 }

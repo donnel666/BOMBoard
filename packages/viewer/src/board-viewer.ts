@@ -20,7 +20,7 @@ import {
 } from "./model.js";
 import {createSideControls} from "./side-controls.js";
 
-import type {FederatedPointerEvent} from "pixi.js";
+import type {FederatedPointerEvent, Texture} from "pixi.js";
 import type {Gerber2DProcessColors, ViewBox} from "@bomboard/parsers";
 import type {SideControls} from "./side-controls.js";
 import type {
@@ -52,11 +52,17 @@ interface DragState {
   moved: boolean;
 }
 
+interface BoardTextureCacheEntry {
+  src: string;
+  promise: Promise<Texture>;
+}
+
 const defaultMinZoom = 0.5;
 const defaultMaxZoom = 180;
 const fitPaddingPx = 24;
 const boardTexturePixelsPerMm = 64;
 const maxBoardTextureSidePx = 6144;
+const componentHitPaddingMm = 0.18;
 
 export class BoardViewer {
   readonly model: BoardViewerModel;
@@ -79,6 +85,7 @@ export class BoardViewer {
   private resizeObserver: ResizeObserver | null = null;
   private dragState: DragState | null = null;
   private currentBoardSprite: Sprite | null = null;
+  private readonly boardTextureCache = new Map<BoardViewerSide, BoardTextureCacheEntry>();
   private boardRenderVersion = 0;
   private pendingRenderFrame: number | null = null;
   private initialized = false;
@@ -320,6 +327,11 @@ export class BoardViewer {
       globalThis.cancelAnimationFrame(this.pendingRenderFrame);
       this.pendingRenderFrame = null;
     }
+    for (const entry of this.boardTextureCache.values()) {
+      void Assets.unload(entry.src).catch(() => undefined);
+    }
+    this.boardTextureCache.clear();
+
     this.app.destroy(
       {removeView: true},
       {children: true, texture: true, textureSource: true}
@@ -425,14 +437,10 @@ export class BoardViewer {
   private async renderBoardSide(): Promise<void> {
     const renderVersion = ++this.boardRenderVersion;
     this.boardLayer.removeChildren();
-    this.currentBoardSprite?.destroy();
+    this.currentBoardSprite?.destroy({texture: false, textureSource: false});
     this.currentBoardSprite = null;
 
-    const svg = renderGerber2DSideSvg(this.options.gerber, this.state.side, {
-      colors: this.processColors,
-      mirrorBottom: this.options.mirrorBottom,
-    });
-    const texture = await Assets.load(svgToDataUrl(prepareSvgForTexture(svg, this.model.viewBox)));
+    const texture = await this.getBoardTexture(this.state.side);
     if (this.destroyed || renderVersion !== this.boardRenderVersion) return;
 
     const sprite = new Sprite(texture);
@@ -443,6 +451,29 @@ export class BoardViewer {
     this.currentBoardSprite = sprite;
     this.boardLayer.addChild(sprite);
     this.requestRender();
+  }
+
+  private getBoardTexture(side: BoardViewerSide): Promise<Texture> {
+    const cached = this.boardTextureCache.get(side);
+    if (cached) return cached.promise;
+
+    const svg = renderGerber2DSideSvg(this.options.gerber, side, {
+      colors: this.processColors,
+      mirrorBottom: this.options.mirrorBottom,
+    });
+    const src = svgToDataUrl(prepareSvgForTexture(svg, this.model.viewBox));
+    const entry: BoardTextureCacheEntry = {
+      src,
+      promise: Assets.load(src),
+    };
+    this.boardTextureCache.set(side, entry);
+    entry.promise.catch(() => {
+      if (this.boardTextureCache.get(side) === entry) {
+        this.boardTextureCache.delete(side);
+      }
+    });
+
+    return entry.promise;
   }
 
   private renderComponents(): void {
@@ -483,12 +514,6 @@ export class BoardViewer {
         marker.rotation = rotation;
         drawComponentGraphic(marker, component, this.colors, true, isSelected);
         this.highlightLayer.addChild(marker);
-
-        const halo = new Graphics();
-        halo.position.set(component.displayPosition.x, component.displayPosition.y);
-        halo.rotation = rotation;
-        drawComponentHalo(halo, component, this.colors, isSelected);
-        this.highlightLayer.addChild(halo);
       }
     }
 
@@ -621,9 +646,14 @@ export class BoardViewer {
 
     const worldPoint = this.screenToWorld(x, y);
     let matchedComponent: ViewerComponent | null = null;
+    let matchedScore = Number.POSITIVE_INFINITY;
     for (const {component, rotation} of this.componentDisplays.values()) {
       if (componentContainsPoint(component, rotation, worldPoint)) {
-        matchedComponent = component;
+        const score = componentHitScore(component, worldPoint);
+        if (score < matchedScore) {
+          matchedComponent = component;
+          matchedScore = score;
+        }
       }
     }
 
@@ -704,6 +734,18 @@ export function createBoardViewer(options: BoardViewerOptions): Promise<BoardVie
   return BoardViewer.create(options);
 }
 
+function componentHitScore(
+  component: ViewerComponent,
+  point: {x: number; y: number}
+): number {
+  const centerDistance = Math.hypot(
+    point.x - component.displayPosition.x,
+    point.y - component.displayPosition.y
+  );
+  const hitArea = component.size.hitWidthMm * component.size.hitHeightMm;
+  return centerDistance + hitArea * 0.0001;
+}
+
 function drawComponentGraphic(
   graphic: Graphics,
   component: ViewerComponent,
@@ -716,21 +758,12 @@ function drawComponentGraphic(
     : highlighted
       ? colors.similarFill
       : colors.componentFill;
-  const stroke = selected
-    ? colors.selectedStroke
-    : highlighted
-      ? colors.similarStroke
-      : colors.componentStroke;
   const alpha = highlighted || selected ? 0.95 : 0.44;
-  const strokeWidth = selected ? 0.18 : highlighted ? 0.12 : 0.08;
 
   graphic.clear();
   drawComponentElements(graphic, component.highlightElements, {
     fill,
-    stroke,
     alpha,
-    strokeWidth,
-    circleInsetMm: selected ? 0.16 : 0.1,
   });
 }
 
@@ -746,23 +779,113 @@ function componentContainsPoint(
   const localX = deltaX * cos + deltaY * sin;
   const localY = -deltaX * sin + deltaY * cos;
 
+  const localPoint = {x: localX, y: localY};
+  if (component.highlightElements.length > 0) {
+    const elementHit = component.highlightElements.some(element => componentElementContainsPoint(
+      element,
+      localPoint,
+      componentHitPaddingMm
+    ));
+    if (elementHit) return true;
+  }
+
   return Math.abs(localX) <= component.size.hitWidthMm / 2
     && Math.abs(localY) <= component.size.hitHeightMm / 2;
 }
 
-function drawComponentHalo(
-  graphic: Graphics,
-  component: ViewerComponent,
-  colors: BoardViewerColors,
-  selected: boolean
-): void {
-  graphic.clear();
-  drawComponentElementOutlines(graphic, component.highlightElements, {
-    stroke: selected ? colors.selectedStroke : colors.similarStroke,
-    strokeWidth: selected ? 0.3 : 0.2,
-    alpha: selected ? 0.96 : 0.72,
-    circleInsetMm: selected ? 0.42 : 0.28,
-  });
+function componentElementContainsPoint(
+  element: ViewerComponentElement,
+  point: {x: number; y: number},
+  paddingMm: number
+): boolean {
+  if (element.kind === "circle") {
+    return Math.hypot(point.x - element.center.x, point.y - element.center.y)
+      <= element.radiusMm + paddingMm;
+  }
+
+  if (element.kind === "polyline") {
+    return pointDistanceToPolyline(point, element.points)
+      <= element.strokeWidthMm / 2 + paddingMm;
+  }
+
+  if (!pointInPolygonBounds(point, element.points, paddingMm)) return false;
+  if (pointInPolygon(point, element.points)) return true;
+  return pointDistanceToPolyline(point, closedPolyline(element.points)) <= paddingMm;
+}
+
+function pointInPolygonBounds(
+  point: {x: number; y: number},
+  polygon: readonly {x: number; y: number}[],
+  paddingMm: number
+): boolean {
+  if (polygon.length === 0) return false;
+  const xs = polygon.map(vertex => vertex.x);
+  const ys = polygon.map(vertex => vertex.y);
+  return point.x >= Math.min(...xs) - paddingMm
+    && point.x <= Math.max(...xs) + paddingMm
+    && point.y >= Math.min(...ys) - paddingMm
+    && point.y <= Math.max(...ys) + paddingMm;
+}
+
+function pointInPolygon(
+  point: {x: number; y: number},
+  polygon: readonly {x: number; y: number}[]
+): boolean {
+  let inside = false;
+  for (let index = 0, previousIndex = polygon.length - 1; index < polygon.length; previousIndex = index, index += 1) {
+    const current = polygon[index];
+    const previous = polygon[previousIndex];
+    if (!current || !previous) continue;
+    const crosses = (current.y > point.y) !== (previous.y > point.y)
+      && point.x < ((previous.x - current.x) * (point.y - current.y)) / (previous.y - current.y) + current.x;
+    if (crosses) inside = !inside;
+  }
+
+  return inside;
+}
+
+function closedPolyline(
+  points: readonly {x: number; y: number}[]
+): {x: number; y: number}[] {
+  const first = points[0];
+  if (!first) return [];
+  return [...points, first];
+}
+
+function pointDistanceToPolyline(
+  point: {x: number; y: number},
+  points: readonly {x: number; y: number}[]
+): number {
+  if (points.length < 2) return Number.POSITIVE_INFINITY;
+  let distance = Number.POSITIVE_INFINITY;
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1];
+    const current = points[index];
+    if (!previous || !current) continue;
+    distance = Math.min(distance, pointDistanceToSegment(point, previous, current));
+  }
+  return distance;
+}
+
+function pointDistanceToSegment(
+  point: {x: number; y: number},
+  start: {x: number; y: number},
+  end: {x: number; y: number}
+): number {
+  const deltaX = end.x - start.x;
+  const deltaY = end.y - start.y;
+  const lengthSquared = deltaX * deltaX + deltaY * deltaY;
+  if (lengthSquared === 0) return Math.hypot(point.x - start.x, point.y - start.y);
+
+  const t = clamp(
+    ((point.x - start.x) * deltaX + (point.y - start.y) * deltaY) / lengthSquared,
+    0,
+    1
+  );
+  return Math.hypot(
+    point.x - (start.x + t * deltaX),
+    point.y - (start.y + t * deltaY)
+  );
 }
 
 function drawComponentElements(
@@ -770,21 +893,16 @@ function drawComponentElements(
   elements: readonly ViewerComponentElement[],
   style: {
     fill: string;
-    stroke: string;
     alpha: number;
-    strokeWidth: number;
-    circleInsetMm: number;
   }
 ): void {
   const fill = colorToHexNumber(style.fill);
-  const stroke = colorToHexNumber(style.stroke);
 
   for (const element of elements) {
     if (element.kind === "circle") {
       graphic
-        .circle(element.center.x, element.center.y, element.radiusMm + style.circleInsetMm)
-        .fill({color: fill, alpha: style.alpha})
-        .stroke({color: stroke, width: style.strokeWidth, alpha: 0.96});
+        .circle(element.center.x, element.center.y, element.radiusMm)
+        .fill({color: fill, alpha: style.alpha});
       continue;
     }
 
@@ -793,7 +911,7 @@ function drawComponentElements(
       drawPolyline(graphic, element.points)
         .stroke({
           color: fill,
-          width: Math.max(element.strokeWidthMm + style.strokeWidth, style.strokeWidth * 2),
+          width: element.strokeWidthMm,
           alpha: style.alpha,
         });
       continue;
@@ -803,47 +921,7 @@ function drawComponentElements(
     if (points.length < 6) continue;
     graphic
       .poly(points, true)
-      .fill({color: fill, alpha: style.alpha})
-      .stroke({color: stroke, width: style.strokeWidth, alpha: 0.96});
-  }
-}
-
-function drawComponentElementOutlines(
-  graphic: Graphics,
-  elements: readonly ViewerComponentElement[],
-  style: {
-    stroke: string;
-    strokeWidth: number;
-    alpha: number;
-    circleInsetMm: number;
-  }
-): void {
-  const stroke = colorToHexNumber(style.stroke);
-
-  for (const element of elements) {
-    if (element.kind === "circle") {
-      graphic
-        .circle(element.center.x, element.center.y, element.radiusMm + style.circleInsetMm)
-        .stroke({color: stroke, width: style.strokeWidth, alpha: style.alpha});
-      continue;
-    }
-
-    if (element.kind === "polyline") {
-      if (element.points.length < 2) continue;
-      drawPolyline(graphic, element.points)
-        .stroke({
-          color: stroke,
-          width: Math.max(element.strokeWidthMm + style.strokeWidth, style.strokeWidth * 2),
-          alpha: style.alpha,
-        });
-      continue;
-    }
-
-    const points = flattenPoints(element.points);
-    if (points.length < 6) continue;
-    graphic
-      .poly(points, true)
-      .stroke({color: stroke, width: style.strokeWidth, alpha: style.alpha});
+      .fill({color: fill, alpha: style.alpha});
   }
 }
 

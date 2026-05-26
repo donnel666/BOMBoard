@@ -58,6 +58,7 @@ export interface CoordinateRecord {
   side: PlacementSide;
   rawLayer: string;
   rotationDeg: number;
+  pins: number | null;
   comment: string;
   sourceRow: number;
   raw: Record<string, string>;

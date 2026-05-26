@@ -10,6 +10,32 @@ import yaml from '@rollup/plugin-yaml'
 const repoRoot = fileURLToPath(new URL('../../', import.meta.url))
 const tmpRoot = resolve(repoRoot, 'tmp')
 const gerberRoot = resolve(tmpRoot, 'gerber_extracted')
+const parsersSource = resolve(repoRoot, 'packages/parsers/src/index.ts')
+const viewerSource = resolve(repoRoot, 'packages/viewer/src/index.ts')
+
+function footprintLibraryCachePlugin(): Plugin {
+  return {
+    name: 'bomboard-footprint-library-cache',
+    configureServer(server) {
+      server.middlewares.use((request, response, next) => {
+        const requestUrl = new URL(request.url ?? '/', 'http://localhost')
+        if (requestUrl.pathname.startsWith('/footprints/')) {
+          response.setHeader('Cache-Control', 'no-store')
+        }
+        next()
+      })
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use((request, response, next) => {
+        const requestUrl = new URL(request.url ?? '/', 'http://localhost')
+        if (requestUrl.pathname.startsWith('/footprints/')) {
+          response.setHeader('Cache-Control', 'no-store')
+        }
+        next()
+      })
+    },
+  }
+}
 
 function sampleDataPlugin(): Plugin {
   return {
@@ -95,5 +121,14 @@ function contentType(path: string): string {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), yaml(), sampleDataPlugin()],
+  plugins: [react(), yaml(), footprintLibraryCachePlugin(), sampleDataPlugin()],
+  resolve: {
+    alias: {
+      '@bomboard/parsers': parsersSource,
+      '@bomboard/viewer': viewerSource,
+    },
+  },
+  optimizeDeps: {
+    exclude: ['@bomboard/parsers', '@bomboard/viewer'],
+  },
 })

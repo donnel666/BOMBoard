@@ -1,0 +1,196 @@
+{
+  "fixedNames": [
+    {
+      "equals": "status report.txt",
+      "kind": "ignored",
+      "side": null,
+      "priority": null,
+      "renderable": false,
+      "reason": "status report"
+    }
+  ],
+  "suffixRules": [
+    {
+      "suffix": "-viainfo.txt",
+      "kind": "viaInfo",
+      "side": "all",
+      "priority": 2,
+      "renderable": false,
+      "reason": "Altium via information CSV"
+    }
+  ],
+  "extensionRules": [
+    {
+      "extensions": [".extrep", ".rep", ".drr", ".apr", ".apr_lib", ".ldp", ".htm", ".gpi", ".gdd", ".gdl", ".gcl"],
+      "kind": "support",
+      "side": null,
+      "priority": null,
+      "renderable": false,
+      "reason": "sidecar/support report"
+    },
+    {
+      "extensions": [".drl", ".xnc", ".drd"],
+      "kind": "drill",
+      "side": "all",
+      "priority": 2,
+      "renderable": false,
+      "reason": "Excellon/NC drill candidate"
+    },
+    {
+      "extensions": [".gm", ".gko", ".gml", ".outline", ".dim"],
+      "kind": "profile",
+      "side": "all",
+      "priority": 1,
+      "renderable": true,
+      "reason": "board profile/outline"
+    },
+    {
+      "extensions": [".gpt"],
+      "kind": "padMaster",
+      "side": "top",
+      "priority": 3,
+      "renderable": true,
+      "reason": "top pad master"
+    },
+    {
+      "extensions": [".gpb"],
+      "kind": "padMaster",
+      "side": "bottom",
+      "priority": 3,
+      "renderable": true,
+      "reason": "bottom pad master"
+    },
+    {
+      "extensions": [".gtl", ".cmp"],
+      "kind": "copper",
+      "side": "top",
+      "priority": 4,
+      "renderable": true,
+      "reason": "top copper"
+    },
+    {
+      "extensions": [".gbl", ".sol"],
+      "kind": "copper",
+      "side": "bottom",
+      "priority": 4,
+      "renderable": true,
+      "reason": "bottom copper"
+    },
+    {
+      "extensions": [".gts", ".stc"],
+      "kind": "solderMask",
+      "side": "top",
+      "priority": 5,
+      "renderable": true,
+      "reason": "top solder mask"
+    },
+    {
+      "extensions": [".gbs", ".sts"],
+      "kind": "solderMask",
+      "side": "bottom",
+      "priority": 5,
+      "renderable": true,
+      "reason": "bottom solder mask"
+    },
+    {
+      "extensions": [".gto", ".plc"],
+      "kind": "silkscreen",
+      "side": "top",
+      "priority": 6,
+      "renderable": true,
+      "reason": "top silkscreen"
+    },
+    {
+      "extensions": [".gbo", ".pls"],
+      "kind": "silkscreen",
+      "side": "bottom",
+      "priority": 6,
+      "renderable": true,
+      "reason": "bottom silkscreen"
+    },
+    {
+      "extensions": [".gtp", ".crc"],
+      "kind": "paste",
+      "side": "top",
+      "priority": 7,
+      "renderable": true,
+      "reason": "top solder paste openings"
+    },
+    {
+      "extensions": [".gbp", ".crs"],
+      "kind": "paste",
+      "side": "bottom",
+      "priority": 7,
+      "renderable": true,
+      "reason": "bottom solder paste openings"
+    }
+  ],
+  "extensionPatternRules": [
+    {
+      "pattern": "^\\.g\\d+$",
+      "kind": "copper",
+      "side": "inner",
+      "priority": null,
+      "renderable": false,
+      "reason": "inner copper ignored for 2D MVP"
+    },
+    {
+      "pattern": "^\\.(?:gm\\d+|gd\\d+|gg\\d+)$",
+      "kind": "support",
+      "side": null,
+      "priority": null,
+      "renderable": false,
+      "reason": "mechanical/drawing layer ignored for 2D MVP"
+    }
+  ],
+  "genericNameRules": {
+    "extensions": [".gbr", ".ger", ".pho"],
+    "topTokens": ["top", "f", "front"],
+    "topCompactTokens": ["toplayer", "frontlayer"],
+    "bottomTokens": ["bottom", "bot", "b", "back"],
+    "bottomCompactTokens": ["bottomlayer", "backlayer"],
+    "functions": [
+      {
+        "tokens": ["edge", "edges", "cuts", "edgecuts", "outline", "profile", "boardoutline"],
+        "kind": "profile",
+        "side": "all",
+        "priority": 1,
+        "renderable": true,
+        "reason": "board profile/outline by filename function",
+        "requiresSide": false
+      },
+      {
+        "tokens": ["paste", "cream", "solderpaste"],
+        "kind": "paste",
+        "priority": 7,
+        "renderable": true,
+        "reason": "solder paste by filename function",
+        "requiresSide": true
+      },
+      {
+        "tokens": ["silk", "silks", "silkscreen", "legend", "overlay"],
+        "kind": "silkscreen",
+        "priority": 6,
+        "renderable": true,
+        "reason": "silkscreen by filename function",
+        "requiresSide": true
+      },
+      {
+        "tokens": ["mask", "soldermask", "solderresist", "resist"],
+        "kind": "solderMask",
+        "priority": 5,
+        "renderable": true,
+        "reason": "solder mask by filename function",
+        "requiresSide": true
+      },
+      {
+        "tokens": ["cu", "copper", "layer"],
+        "kind": "copper",
+        "priority": 4,
+        "renderable": true,
+        "reason": "copper by filename function",
+        "requiresSide": true
+      }
+    ]
+  }
+}
