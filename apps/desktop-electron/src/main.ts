@@ -1,10 +1,12 @@
 import { app, BrowserWindow, ipcMain } from "electron";
-import { autoUpdater } from "electron-updater";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const require = createRequire(import.meta.url);
+const { autoUpdater } = require("electron-updater") as typeof import("electron-updater");
 const webDistDir = path.resolve(__dirname, "../../web/dist");
 const preloadPath = path.join(__dirname, "preload.js");
 const devServerUrl = process.env.VITE_DEV_SERVER_URL;

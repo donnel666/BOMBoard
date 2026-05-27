@@ -2,9 +2,7 @@
 
 English | [中文](./README.zh-CN.md)
 
-[![GitHub Repository](https://img.shields.io/badge/GitHub-Repository-181717?logo=github&logoColor=white)](https://github.com/donnel666/BOMBoard) [![Gitee China Mirror](https://img.shields.io/badge/Gitee-China%20Mirror-C71D23?logo=gitee&logoColor=white)](https://gitee.com/donnel/BOMBoard) [![QQ Group 2163055552](https://img.shields.io/badge/QQ%20Group-2163055552-12B7F5?logo=tencentqq&logoColor=white)](https://qm.qq.com/q/iBHcSKY3wk) [![License GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue)](./LICENSE)
-
-For users in mainland China, the [Gitee repository](https://gitee.com/donnel/BOMBoard) is recommended for more stable access to source code and release downloads.
+[![GitHub](https://img.shields.io/badge/GitHub-181717?logo=github&logoColor=white)](https://github.com/donnel666/BOMBoard) [![Gitee](https://img.shields.io/badge/Gitee-C71D23?logo=gitee&logoColor=white)](https://gitee.com/donnel/BOMBoard) [![QQ Group 2163055552](https://img.shields.io/badge/QQ%20Group-2163055552-12B7F5?logo=tencentqq&logoColor=white)](https://qm.qq.com/q/iBHcSKY3wk) [![License GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue)](./LICENSE)
 
 BOMBoard is an open source PCB component locator for manual SMT assembly and prototype soldering. It runs entirely in the local browser, requires no file upload, and helps you quickly find component positions on the rendered PCB after loading Gerber files plus BOM and coordinate data.
 
@@ -23,13 +21,11 @@ It is built for the practical workflow of looking at the physical board, searchi
 
 ## Contributing
 
-Found a parsing issue, rendering mismatch, or workflow problem? Please open an issue: <https://github.com/donnel666/BOMBoard/issues> 🐛
+Found a parsing issue, rendering mismatch, footprint matching problem, or workflow issue? Please open an issue. 🐛
 
-Pull requests are welcome. If you want to improve Gerber compatibility, BOM/coordinate parsing, footprint matching, documentation, packaging, or UI details, feel free to submit a PR: <https://github.com/donnel666/BOMBoard/pulls> ✨
+Pull requests are welcome. Improvements to Gerber compatibility, BOM/coordinate parsing, footprint matching, documentation, packaging, and UI details can be submitted as PRs. ✨
 
 ## Quick Tutorial
-
-Place the tutorial screenshots in `docs/images/` with the file names shown below. Recommended screenshot size: 1440x900 or wider. Keep the same file names when replacing the images.
 
 ### 1. Open BOMBoard
 
