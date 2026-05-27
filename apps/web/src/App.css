@@ -189,8 +189,8 @@
 }
 
 .component-panel {
-  display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   max-height: 100vh;
   background: #f4f0e7;
@@ -220,6 +220,53 @@
 .bom-github-link:hover {
   border-color: rgba(23, 27, 32, 0.22);
   background: #f7df91;
+}
+
+.app-version-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  min-width: 54px;
+  padding: 0 8px;
+  border: 1px solid rgba(23, 27, 32, 0.12);
+  border-radius: 6px;
+  appearance: none;
+  background: rgba(255, 250, 240, 0.78);
+  color: #4e5754;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: default;
+}
+
+.app-version-badge:disabled {
+  opacity: 1;
+}
+
+.app-version-badge:not(:disabled) {
+  border-color: rgba(180, 27, 27, 0.22);
+  background: #fff7f3;
+  color: #171b20;
+  cursor: pointer;
+}
+
+.app-version-badge strong {
+  display: inline-grid;
+  height: 16px;
+  min-width: 32px;
+  padding: 0 5px;
+  place-content: center;
+  border-radius: 999px;
+  background: #c82626;
+  color: #fff6f2;
+  font-size: 0.58rem;
+  line-height: 1;
+}
+
+.app-version-badge:not(:disabled):hover {
+  border-color: rgba(180, 27, 27, 0.44);
+  background: #ffecea;
 }
 
 .panel-label {
@@ -332,6 +379,7 @@
 }
 
 .component-list {
+  flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
   padding: 8px;
@@ -456,6 +504,69 @@
   font-size: 0.74rem;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.update-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-content: center;
+  padding: 24px;
+  background: rgba(4, 8, 7, 0.58);
+}
+
+.update-dialog {
+  display: grid;
+  gap: 14px;
+  width: min(420px, calc(100vw - 48px));
+  padding: 18px;
+  border: 1px solid rgba(23, 27, 32, 0.14);
+  border-radius: 8px;
+  background: #fffaf0;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.32);
+  color: #171b20;
+}
+
+.update-dialog p {
+  margin: 0 0 4px;
+  color: #9f2b22;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.update-dialog h2 {
+  margin: 0;
+  font-size: 1.08rem;
+  line-height: 1.2;
+}
+
+.update-dialog span {
+  color: #59625f;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.update-dialog-error {
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #ffe4df;
+  color: #9f2b22;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.update-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.update-dialog-actions button:disabled {
+  cursor: wait;
+  filter: saturate(0.65);
 }
 
 @media (max-width: 900px) {

@@ -1,5 +1,6 @@
 app:
   name: BOMBoard
+  versionTitle: "当前版本 {{version}}"
 aria:
   boardSide: 板面
   boardViewControls: 板图视图控制
@@ -58,3 +59,14 @@ status:
   renderingBoard: 正在渲染板图
   savingProject: 正在保存项目
   validatingProjectFiles: 正在校验项目文件
+updates:
+  available: "发现新版本 {{version}}"
+  cancel: 暂不升级
+  confirm: 确认升级
+  dialogBody: 桌面端会自动下载并安装新版本；Web 版本会跳转到 GitHub 发布页，由用户手工替换部署文件。
+  dialogEyebrow: 版本更新
+  dialogTitle: "升级到 {{version}}？"
+  failedGeneric: 自动升级失败。
+  installing: 正在升级
+  new: NEW
+  viewRelease: 查看发布

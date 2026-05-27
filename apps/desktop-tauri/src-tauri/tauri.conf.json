@@ -1,0 +1,37 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "BOMBoard",
+  "version": "0.1.0",
+  "identifier": "com.donnel666.bomboard",
+  "build": {
+    "beforeDevCommand": "pnpm --filter @bomboard/web dev",
+    "beforeBuildCommand": "pnpm --filter @bomboard/web build",
+    "devUrl": "http://localhost:5173",
+    "frontendDist": "../../web/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "BOMBoard",
+        "width": 1440,
+        "height": 960,
+        "minWidth": 1024,
+        "minHeight": 720,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis"
+    ],
+    "publisher": "BOMBoard",
+    "category": "DeveloperTool",
+    "shortDescription": "BOMBoard",
+    "longDescription": "Gerber, coordinate, and BOM board viewer."
+  }
+}

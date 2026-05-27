@@ -11,9 +11,12 @@
   "scripts": {
     "dev": "pnpm dev:web",
     "dev:web": "pnpm --filter @bomboard/web dev",
-    "dev:desktop": "concurrently -k -n web,desktop -c cyan,yellow \"pnpm dev:web\" \"pnpm --filter @bomboard/desktop dev\"",
+    "dev:desktop": "pnpm dev:desktop:electron",
+    "dev:desktop:electron": "concurrently -k -n web,electron -c cyan,yellow \"pnpm dev:web\" \"pnpm --filter @bomboard/desktop-electron dev\"",
+    "dev:desktop:tauri": "pnpm --filter @bomboard/desktop-tauri dev",
     "build:footprints": "node scripts/build-footprint-library.mjs",
     "scan:unmatched": "node scripts/scan-unmatched-footprints.mjs",
+    "release:version": "node scripts/set-release-version.mjs",
     "build": "pnpm -r --if-present build",
     "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r --if-present typecheck"

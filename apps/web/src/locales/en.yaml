@@ -1,5 +1,6 @@
 app:
   name: BOMBoard
+  versionTitle: "Current version {{version}}"
 aria:
   boardSide: Board side
   boardViewControls: Board view controls
@@ -58,3 +59,14 @@ status:
   renderingBoard: Rendering board
   savingProject: Saving project
   validatingProjectFiles: Validating project files
+updates:
+  available: "New version {{version}} is available"
+  cancel: Not now
+  confirm: Upgrade
+  dialogBody: Desktop builds will download and install the update automatically. Web builds will open the GitHub release so the deployed files can be replaced manually.
+  dialogEyebrow: Update
+  dialogTitle: "Upgrade to {{version}}?"
+  failedGeneric: Automatic update failed.
+  installing: Updating
+  new: NEW
+  viewRelease: View release

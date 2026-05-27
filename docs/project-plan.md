@@ -111,7 +111,8 @@ Recommended structure:
 BOMBoard/
   apps/
     web/
-    desktop/
+    desktop-electron/
+    desktop-tauri/
   packages/
     core/
     parsers/
@@ -124,15 +125,19 @@ BOMBoard/
 
 Contains the browser application built with React and Vite.
 
-### `apps/desktop`
+### `apps/desktop-electron`
 
-Contains only Electron-specific code:
+Contains Electron-specific code for the Chromium-bundled desktop build:
 
 - `main` process
 - `preload` bridge
 - packaging configuration
 
 This app should load the same shared frontend code used by the web application.
+
+### `apps/desktop-tauri`
+
+Contains Tauri-specific code for the Windows WebView2 desktop build.
 
 ### `packages/core`
 
@@ -463,7 +468,8 @@ Tasks:
 
 - initialize pnpm workspace
 - create `apps/web`
-- create `apps/desktop`
+- create `apps/desktop-electron`
+- create `apps/desktop-tauri`
 - create `packages/core`
 - create `packages/parsers`
 - create `packages/viewer`

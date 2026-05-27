@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { readFile, readdir } from 'node:fs/promises'
 import type { ServerResponse } from 'node:http'
 import { extname, resolve } from 'node:path'
@@ -12,6 +13,14 @@ const tmpRoot = resolve(repoRoot, 'tmp')
 const gerberRoot = resolve(tmpRoot, 'gerber_extracted')
 const parsersSource = resolve(repoRoot, 'packages/parsers/src/index.ts')
 const viewerSource = resolve(repoRoot, 'packages/viewer/src/index.ts')
+const rootPackage = JSON.parse(readFileSync(resolve(repoRoot, 'package.json'), 'utf8')) as { version?: string }
+const appVersion = normalizeReleaseVersion(
+  process.env.VITE_BOMBOARD_VERSION
+    ?? process.env.BOMBOARD_VERSION
+    ?? process.env.GITHUB_REF_NAME
+    ?? rootPackage.version
+    ?? '0.1.0'
+)
 
 function footprintLibraryCachePlugin(): Plugin {
   return {
@@ -122,6 +131,9 @@ function contentType(path: string): string {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), yaml(), footprintLibraryCachePlugin(), sampleDataPlugin()],
+  define: {
+    __BOMBOARD_VERSION__: JSON.stringify(appVersion),
+  },
   resolve: {
     alias: {
       '@bomboard/parsers': parsersSource,
@@ -132,3 +144,8 @@ export default defineConfig({
     exclude: ['@bomboard/parsers', '@bomboard/viewer'],
   },
 })
+
+function normalizeReleaseVersion(value: string): string {
+  const cleaned = value.trim().replace(/^refs\/tags\//, '').replace(/^v/i, '')
+  return cleaned || '0.1.0'
+}

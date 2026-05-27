@@ -81,7 +81,7 @@ export async function loadFootprintLibraryForComponents(
 
   let manifest: FootprintLibraryManifest;
   try {
-    manifest = await fetchJson<FootprintLibraryManifest>(baseUrl, "manifest.json", {cache: "no-store"});
+    manifest = await fetchJson<FootprintLibraryManifest>(baseUrl, "manifest.json", {cache: "no-cache"});
   } catch {
     return emptyFootprintLibrary;
   }

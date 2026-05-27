@@ -1,0 +1,6 @@
+{
+  "identifier": "default",
+  "description": "Default BOMBoard desktop permissions",
+  "windows": ["main"],
+  "permissions": []
+}

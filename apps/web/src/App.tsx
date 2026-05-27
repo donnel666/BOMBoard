@@ -17,6 +17,7 @@ import {
   type BoardViewerSide,
 } from '@bomboard/viewer'
 
+import { appVersion } from './version'
 import './App.css'
 
 interface ComponentRow {
@@ -56,8 +57,19 @@ interface OpenProjectOptions {
   restoredState?: PersistedProjectState | null
 }
 
+interface UpdateInfo {
+  version: string
+  url: string
+}
+
+interface UpdateInstallResult {
+  ok: boolean
+  error?: string
+}
+
 type Translate = (key: string, options?: Record<string, unknown>) => string
 type ImportStatus = 'idle' | 'loading' | 'ready' | 'failed'
+type UpdateInstallStatus = 'idle' | 'installing' | 'failed'
 type PassiveKind = 'resistor' | 'capacitor' | 'inductor'
 type ComponentRowSide = BoardViewerSide | 'unknown' | 'mixed'
 type ComponentSelectionMode = 'group' | 'single'
@@ -141,6 +153,10 @@ function App() {
   const [components, setComponents] = useState<ComponentRow[]>([])
   const [bomSearch, setBomSearch] = useState('')
   const [side, setSide] = useState<BoardViewerSide>('top')
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
+  const [updateDialogOpen, setUpdateDialogOpen] = useState(false)
+  const [updateInstallStatus, setUpdateInstallStatus] = useState<UpdateInstallStatus>('idle')
+  const [updateInstallError, setUpdateInstallError] = useState<string | null>(null)
   const [directorySupported] = useState(() => canSelectDirectory())
 
   useEffect(() => {
@@ -157,6 +173,22 @@ function App() {
       importRunRef.current += 1
       viewerRef.current?.destroy()
       viewerRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    void checkForAppUpdate(appVersion)
+      .then(info => {
+        if (!cancelled) setUpdateInfo(info)
+      })
+      .catch(() => {
+        if (!cancelled) setUpdateInfo(null)
+      })
+
+    return () => {
+      cancelled = true
     }
   }, [])
 
@@ -377,6 +409,34 @@ function App() {
     setSide(nextSide)
     void viewer.setSide(nextSide).catch(unknownError => {
       setError(errorMessage(unknownError))
+    })
+  }
+
+  const openUpdateDialog = () => {
+    if (!updateInfo) return
+    setUpdateInstallStatus('idle')
+    setUpdateInstallError(null)
+    setUpdateDialogOpen(true)
+  }
+
+  const closeUpdateDialog = () => {
+    if (updateInstallStatus === 'installing') return
+    setUpdateDialogOpen(false)
+    setUpdateInstallStatus('idle')
+    setUpdateInstallError(null)
+  }
+
+  const confirmUpdateInstall = () => {
+    if (!updateInfo || updateInstallStatus === 'installing') return
+
+    setUpdateInstallStatus('installing')
+    setUpdateInstallError(null)
+
+    void installAppUpdate(updateInfo).then(result => {
+      if (result.ok) return
+
+      setUpdateInstallStatus('failed')
+      setUpdateInstallError(result.error ?? translate('updates.failedGeneric'))
     })
   }
 
@@ -630,6 +690,16 @@ function App() {
                 />
               </svg>
             </a>
+            <button
+              type="button"
+              className="app-version-badge"
+              disabled={!updateInfo}
+              title={t('app.versionTitle', { version: appVersion })}
+              onClick={openUpdateDialog}
+            >
+              <span>v{appVersion}</span>
+              {updateInfo && <strong>{t('updates.new')}</strong>}
+            </button>
           </div>
           <span className="count-badge">{filteredComponents.length}</span>
         </div>
@@ -665,6 +735,45 @@ function App() {
           {renderComponentRows()}
         </div>
       </aside>
+
+      {updateDialogOpen && updateInfo && (
+        <div className="update-dialog-backdrop" role="presentation" onMouseDown={closeUpdateDialog}>
+          <section
+            className="update-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="update-dialog-title"
+            onMouseDown={event => event.stopPropagation()}
+          >
+            <div>
+              <p>{t('updates.dialogEyebrow')}</p>
+              <h2 id="update-dialog-title">{t('updates.dialogTitle', { version: updateInfo.version })}</h2>
+            </div>
+            <span>{t('updates.dialogBody')}</span>
+            {updateInstallStatus === 'failed' && updateInstallError && (
+              <strong className="update-dialog-error">{updateInstallError}</strong>
+            )}
+            <div className="update-dialog-actions">
+              <button
+                type="button"
+                className="secondary-import-button"
+                disabled={updateInstallStatus === 'installing'}
+                onClick={closeUpdateDialog}
+              >
+                {t('updates.cancel')}
+              </button>
+              <button
+                type="button"
+                className="primary-import-button"
+                disabled={updateInstallStatus === 'installing'}
+                onClick={confirmUpdateInstall}
+              >
+                {updateInstallStatus === 'installing' ? t('updates.installing') : t('updates.confirm')}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </main>
   )
 }
@@ -1411,6 +1520,96 @@ function copyBytes(bytes: Uint8Array): ArrayBuffer {
   const copy = new Uint8Array(bytes.byteLength)
   copy.set(bytes)
   return copy.buffer
+}
+
+async function installAppUpdate(updateInfo: UpdateInfo): Promise<UpdateInstallResult> {
+  const desktopUpdater = getDesktopUpdater()
+  if (desktopUpdater) return desktopUpdater.install()
+
+  window.location.assign(updateInfo.url)
+  return { ok: true }
+}
+
+interface BomBoardWindow {
+  bomboard?: {
+    updater?: {
+      install: () => Promise<UpdateInstallResult>
+    }
+  }
+}
+
+function getDesktopUpdater() {
+  return (window as Window & BomBoardWindow).bomboard?.updater ?? null
+}
+
+async function checkForAppUpdate(currentVersion: string): Promise<UpdateInfo | null> {
+  const current = parseComparableVersion(currentVersion)
+  if (!current) return null
+
+  const response = await fetch('https://api.github.com/repos/donnel666/BOMBoard/releases/latest', {
+    headers: {
+      Accept: 'application/vnd.github+json',
+    },
+  })
+  if (!response.ok) return null
+
+  const release = await response.json() as { tag_name?: unknown; html_url?: unknown }
+  if (typeof release.tag_name !== 'string' || typeof release.html_url !== 'string') {
+    return null
+  }
+
+  const latest = parseComparableVersion(release.tag_name)
+  if (!latest || compareVersions(latest, current) <= 0) return null
+
+  return {
+    version: formatVersionTag(latest.raw),
+    url: release.html_url,
+  }
+}
+
+interface ComparableVersion {
+  raw: string
+  major: number
+  minor: number
+  patch: number
+  prerelease: string | null
+}
+
+function parseComparableVersion(value: string): ComparableVersion | null {
+  const normalized = value.trim().replace(/^refs\/tags\//, '').replace(/^v/i, '')
+  const match = normalized.match(/^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/)
+  if (!match) return null
+
+  const major = Number.parseInt(match[1] ?? '', 10)
+  const minor = Number.parseInt(match[2] ?? '', 10)
+  const patch = Number.parseInt(match[3] ?? '', 10)
+  if (!Number.isFinite(major) || !Number.isFinite(minor) || !Number.isFinite(patch)) return null
+
+  return {
+    raw: normalized,
+    major,
+    minor,
+    patch,
+    prerelease: match[4] ?? null,
+  }
+}
+
+function compareVersions(left: ComparableVersion, right: ComparableVersion): number {
+  const numericDifference =
+    left.major - right.major
+    || left.minor - right.minor
+    || left.patch - right.patch
+  if (numericDifference !== 0) return numericDifference
+
+  if (left.prerelease === null && right.prerelease !== null) return 1
+  if (left.prerelease !== null && right.prerelease === null) return -1
+  if (left.prerelease === right.prerelease) return 0
+
+  return (left.prerelease ?? '').localeCompare(right.prerelease ?? '', undefined, { numeric: true })
+}
+
+function formatVersionTag(version: string): string {
+  return version.startsWith('v') || version.startsWith('V') ? version : `v${version}`
 }
 
 export default App

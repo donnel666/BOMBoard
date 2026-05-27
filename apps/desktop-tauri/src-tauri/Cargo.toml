@@ -1,0 +1,18 @@
+[package]
+name = "bomboard"
+version = "0.1.0"
+description = "BOMBoard"
+authors = ["BOMBoard contributors"]
+license = "GPL-3.0-only"
+repository = "https://github.com/donnel666/BOMBoard"
+edition = "2021"
+
+[lib]
+name = "bomboard_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
