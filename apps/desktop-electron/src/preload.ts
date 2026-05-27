@@ -5,9 +5,16 @@ interface UpdateInstallResult {
   error?: string;
 }
 
+interface UpdateInfo {
+  source: "gitee" | "github";
+  feedUrl?: string;
+}
+
 contextBridge.exposeInMainWorld("bomboard", {
   shell: "electron",
   updater: {
-    install: () => ipcRenderer.invoke("bomboard:install-update") as Promise<UpdateInstallResult>
+    install: (updateInfo: UpdateInfo) => (
+      ipcRenderer.invoke("bomboard:install-update", updateInfo) as Promise<UpdateInstallResult>
+    )
   }
 });

@@ -182,13 +182,19 @@ jobs:
           if-no-files-found: error
 
   publish:
-    name: Publish GitHub Release
+    name: Publish Releases
     runs-on: ubuntu-latest
     needs:
       - web-dist
       - electron-windows
       - tauri-windows
     steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
       - uses: actions/download-artifact@v8
         with:
           path: release-assets
@@ -202,3 +208,11 @@ jobs:
           tag_name: ${{ env.RELEASE_REF_NAME }}
           files: release-assets/*
           generate_release_notes: true
+
+      - name: Publish Gitee Release
+        env:
+          GITEE_ACCESS_TOKEN: ${{ secrets.GITEE_ACCESS_TOKEN }}
+          GITEE_OWNER: donnel
+          GITEE_REPO: BOMBoard
+          GITEE_TARGET_COMMITISH: ${{ github.sha }}
+        run: node scripts/publish-gitee-release.mjs --tag "${RELEASE_REF_NAME}" --assets release-assets

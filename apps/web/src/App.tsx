@@ -60,6 +60,19 @@ interface OpenProjectOptions {
 interface UpdateInfo {
   version: string
   url: string
+  source: UpdateReleaseSourceId
+  feedUrl?: string
+}
+
+type UpdateReleaseSourceId = 'gitee' | 'github'
+
+interface UpdateReleaseSource {
+  id: UpdateReleaseSourceId
+  latestUrl: string
+  headers?: HeadersInit
+  readTag: (release: Record<string, unknown>) => string | null
+  readUrl: (release: Record<string, unknown>, tag: string) => string | null
+  readFeedUrl?: (release: Record<string, unknown>, tag: string) => string | null
 }
 
 interface UpdateInstallResult {
@@ -134,6 +147,33 @@ const persistedProjectStoreName = 'projects'
 const persistedProjectKey = 'current'
 const persistedProjectStateKey = 'bomboard.currentProjectState'
 const openSourceProjectUrl = 'https://github.com/donnel666/BOMBoard'
+const updateReleaseSources: readonly UpdateReleaseSource[] = [
+  {
+    id: 'gitee',
+    latestUrl: 'https://gitee.com/api/v5/repos/donnel/BOMBoard/releases/latest',
+    headers: {
+      Accept: 'application/json',
+    },
+    readTag: release => stringField(release, 'tagName') ?? stringField(release, 'tag_name'),
+    readUrl: (release, tag) => (
+      stringField(release, 'htmlUrl')
+      ?? stringField(release, 'html_url')
+      ?? `https://gitee.com/donnel/BOMBoard/releases/tag/${encodeURIComponent(tag)}`
+    ),
+    readFeedUrl: (_release, tag) => (
+      `https://gitee.com/donnel/BOMBoard/releases/download/${encodeURIComponent(tag)}/`
+    ),
+  },
+  {
+    id: 'github',
+    latestUrl: 'https://api.github.com/repos/donnel666/BOMBoard/releases/latest',
+    headers: {
+      Accept: 'application/vnd.github+json',
+    },
+    readTag: release => stringField(release, 'tag_name'),
+    readUrl: release => stringField(release, 'html_url'),
+  },
+]
 
 function App() {
   const { t } = useTranslation()
@@ -1524,7 +1564,7 @@ function copyBytes(bytes: Uint8Array): ArrayBuffer {
 
 async function installAppUpdate(updateInfo: UpdateInfo): Promise<UpdateInstallResult> {
   const desktopUpdater = getDesktopUpdater()
-  if (desktopUpdater) return desktopUpdater.install()
+  if (desktopUpdater) return desktopUpdater.install(updateInfo)
 
   window.location.assign(updateInfo.url)
   return { ok: true }
@@ -1533,7 +1573,7 @@ async function installAppUpdate(updateInfo: UpdateInfo): Promise<UpdateInstallRe
 interface BomBoardWindow {
   bomboard?: {
     updater?: {
-      install: () => Promise<UpdateInstallResult>
+      install: (updateInfo: UpdateInfo) => Promise<UpdateInstallResult>
     }
   }
 }
@@ -1546,25 +1586,47 @@ async function checkForAppUpdate(currentVersion: string): Promise<UpdateInfo | n
   const current = parseComparableVersion(currentVersion)
   if (!current) return null
 
-  const response = await fetch('https://api.github.com/repos/donnel666/BOMBoard/releases/latest', {
-    headers: {
-      Accept: 'application/vnd.github+json',
-    },
+  for (const source of updateReleaseSources) {
+    const updateInfo = await checkReleaseSourceForUpdate(source, current).catch(() => null)
+    if (updateInfo) return updateInfo
+  }
+
+  return null
+}
+
+async function checkReleaseSourceForUpdate(
+  source: UpdateReleaseSource,
+  current: ComparableVersion
+): Promise<UpdateInfo | null> {
+  const response = await fetch(source.latestUrl, {
+    cache: 'no-store',
+    headers: source.headers,
   })
   if (!response.ok) return null
 
-  const release = await response.json() as { tag_name?: unknown; html_url?: unknown }
-  if (typeof release.tag_name !== 'string' || typeof release.html_url !== 'string') {
+  const release = await response.json() as Record<string, unknown>
+  const tag = source.readTag(release)
+  if (!tag) return null
+
+  const url = source.readUrl(release, tag)
+  if (!url) {
     return null
   }
 
-  const latest = parseComparableVersion(release.tag_name)
+  const latest = parseComparableVersion(tag)
   if (!latest || compareVersions(latest, current) <= 0) return null
 
   return {
     version: formatVersionTag(latest.raw),
-    url: release.html_url,
+    url,
+    source: source.id,
+    feedUrl: source.readFeedUrl?.(release, tag) ?? undefined,
   }
+}
+
+function stringField(value: Record<string, unknown>, key: string): string | null {
+  const field = value[key]
+  return typeof field === 'string' && field.length > 0 ? field : null
 }
 
 interface ComparableVersion {

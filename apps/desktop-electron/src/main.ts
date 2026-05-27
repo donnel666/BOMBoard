@@ -14,6 +14,11 @@ interface UpdateInstallResult {
   error?: string;
 }
 
+interface UpdateInstallOptions {
+  source?: "gitee" | "github";
+  feedUrl?: string;
+}
+
 let updateInstallPromise: Promise<UpdateInstallResult> | null = null;
 
 async function createMainWindow() {
@@ -51,10 +56,12 @@ app.whenReady().then(() => {
 });
 
 function registerUpdaterIpc() {
-  ipcMain.handle("bomboard:install-update", () => installUpdate());
+  ipcMain.handle("bomboard:install-update", (_event, options: UpdateInstallOptions) => (
+    installUpdate(options)
+  ));
 }
 
-function installUpdate(): Promise<UpdateInstallResult> {
+function installUpdate(options: UpdateInstallOptions = {}): Promise<UpdateInstallResult> {
   if (!app.isPackaged) {
     return Promise.resolve({
       ok: false,
@@ -66,6 +73,7 @@ function installUpdate(): Promise<UpdateInstallResult> {
 
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
+  configureUpdateFeed(options);
 
   updateInstallPromise = new Promise<UpdateInstallResult>(resolve => {
     const finish = (result: UpdateInstallResult) => {
@@ -108,6 +116,22 @@ function installUpdate(): Promise<UpdateInstallResult> {
   });
 
   return updateInstallPromise;
+}
+
+function configureUpdateFeed(options: UpdateInstallOptions) {
+  if (options.source === "gitee" && options.feedUrl) {
+    autoUpdater.setFeedURL({
+      provider: "generic",
+      url: options.feedUrl
+    });
+    return;
+  }
+
+  autoUpdater.setFeedURL({
+    provider: "github",
+    owner: "donnel666",
+    repo: "BOMBoard"
+  });
 }
 
 app.on("window-all-closed", () => {

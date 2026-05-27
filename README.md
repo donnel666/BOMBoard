@@ -2,9 +2,9 @@
 
 English | [中文](./README.zh-CN.md)
 
-BOMBoard is an open source 2D PCB review tool for cross-probing between board manufacturing data and BOM data.
+BOMBoard is an open source PCB component locator for manual SMT assembly and prototype soldering. It runs entirely in the local browser, requires no file upload, and helps you quickly find component positions on the rendered PCB after loading Gerber files plus BOM and coordinate data.
 
-The web app runs locally in the browser. It loads a ZIP package or a local directory, validates the project files, renders the PCB from Gerber and drill data, and links the board view with BOM and coordinate data. Project data is kept in browser storage so a refresh can restore the current workspace until the project is closed manually.
+It is built for the practical workflow of looking at the physical board, searching a designator or BOM entry, and finding the corresponding location without repeatedly switching between drawings and spreadsheets. It loads a ZIP package or a local directory, validates the project files, renders the PCB from Gerber and drill data, and links the board view with BOM and coordinate data. Project data is kept in browser storage so a refresh can restore the current workspace until the project is closed manually.
 
 ## Features
 
@@ -46,13 +46,13 @@ Select a ZIP package or directory that includes complete Gerber files, Excellon 
 ![BOMBoard project loaded without highlights](./docs/images/02-project-loaded.png)
 
 
-### 3. Review Components by Side
+### 3. Locate Components by Side
 
 Use the `Top` and `Bottom` controls to switch board sides. When the search box is empty, the BOM list follows the current board side. Search by designator, package, or component name when you need to locate parts quickly. Search results include both top and bottom components, and results from the other side are marked with a side label.
 
 ### 4. Highlight a Matching Component Group
 
-Click the package/name area in the BOM to highlight the matching component group. This is useful for reviewing all components with the same identity on the current board side.
+Click the package/name area in the BOM to highlight the matching component group. This is useful for locating all components with the same identity on the current board side.
 
 ![Highlight all components in BOMBoard](./docs/images/03-highlight-all-components.png)
 

@@ -334,7 +334,7 @@ export class BoardViewer {
 
     this.app.destroy(
       {removeView: true},
-      {children: true, texture: true, textureSource: true}
+      {children: true}
     );
 
     if (this.changedContainerPosition) {
