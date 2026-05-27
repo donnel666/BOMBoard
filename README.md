@@ -2,6 +2,10 @@
 
 English | [中文](./README.zh-CN.md)
 
+[![GitHub Repository](https://img.shields.io/badge/GitHub-Repository-181717?logo=github&logoColor=white)](https://github.com/donnel666/BOMBoard) [![Gitee China Mirror](https://img.shields.io/badge/Gitee-China%20Mirror-C71D23?logo=gitee&logoColor=white)](https://gitee.com/donnel/BOMBoard) [![QQ Group 2163055552](https://img.shields.io/badge/QQ%20Group-2163055552-12B7F5?logo=tencentqq&logoColor=white)](https://qm.qq.com/q/iBHcSKY3wk) [![License GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue)](./LICENSE)
+
+For users in mainland China, the [Gitee repository](https://gitee.com/donnel/BOMBoard) is recommended for more stable access to source code and release downloads.
+
 BOMBoard is an open source PCB component locator for manual SMT assembly and prototype soldering. It runs entirely in the local browser, requires no file upload, and helps you quickly find component positions on the rendered PCB after loading Gerber files plus BOM and coordinate data.
 
 It is built for the practical workflow of looking at the physical board, searching a designator or BOM entry, and finding the corresponding location without repeatedly switching between drawings and spreadsheets. It loads a ZIP package or a local directory, validates the project files, renders the PCB from Gerber and drill data, and links the board view with BOM and coordinate data. Project data is kept in browser storage so a refresh can restore the current workspace until the project is closed manually.
@@ -16,12 +20,6 @@ It is built for the practical workflow of looking at the physical board, searchi
 - BOM sorting optimized for common SMD resistors, capacitors, and inductors.
 - Browser-language based Chinese and English UI.
 - Open source under GPL-3.0.
-
-## Project Links
-
-- GitHub: <https://github.com/donnel666/BOMBoard>
-- QQ group: [2163055552](https://qm.qq.com/q/iBHcSKY3wk)
-- License: [GNU General Public License v3.0](./LICENSE)
 
 ## Contributing
 

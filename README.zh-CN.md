@@ -2,6 +2,10 @@
 
 [English](./README.md) | 中文
 
+[![GitHub 主仓库](https://img.shields.io/badge/GitHub-%E4%B8%BB%E4%BB%93%E5%BA%93-181717?logo=github&logoColor=white)](https://github.com/donnel666/BOMBoard) [![Gitee 国内仓库](https://img.shields.io/badge/Gitee-%E5%9B%BD%E5%86%85%E4%BB%93%E5%BA%93-C71D23?logo=gitee&logoColor=white)](https://gitee.com/donnel/BOMBoard) [![QQ 群 2163055552](https://img.shields.io/badge/QQ%20%E7%BE%A4-2163055552-12B7F5?logo=tencentqq&logoColor=white)](https://qm.qq.com/q/iBHcSKY3wk) [![License GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue)](./LICENSE)
+
+国内用户建议优先访问 [Gitee 国内仓库](https://gitee.com/donnel/BOMBoard)，下载源码和发布版本会更稳定。
+
 BOMBoard 是一个开源的 PCB 元件定位工具，专为手工贴片和样板焊接场景设计。它完全运行在浏览器本地，无需上传文件，加载 Gerber 文件和 BOM/坐标数据后，即可在渲染出的板图上快速定位元件，帮你“看着板子找位置”，告别反复对图纸的烦恼。
 
 它可以加载本地 ZIP 包或目录，校验项目文件，根据 Gerber 和钻孔数据渲染 PCB，并把板图视图与 BOM、坐标数据关联起来。项目数据会保存在浏览器存储中，刷新页面后可恢复当前工作区，直到用户手动关闭项目。
@@ -16,12 +20,6 @@ BOMBoard 是一个开源的 PCB 元件定位工具，专为手工贴片和样板
 - 针对常见贴片电阻、电容、电感优化 BOM 排序。
 - 根据浏览器语言自动显示中文或英文界面。
 - 基于 GPL-3.0 开源。
-
-## 项目链接
-
-- GitHub：<https://github.com/donnel666/BOMBoard>
-- QQ 群：[2163055552](https://qm.qq.com/q/iBHcSKY3wk)
-- 许可证：[GNU General Public License v3.0](./LICENSE)
 
 ## 参与贡献
 
