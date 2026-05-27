@@ -176,6 +176,37 @@ describe("coordinate CSV parsing", () => {
     expect(parseLengthMm("+.5mm")).toBeCloseTo(0.5, 6);
   });
 
+  it("parses Altium pick-and-place mil column units as millimeters", () => {
+    const coordinates = parseCoordinateCsv({
+      name: "Pick Place.csv",
+      text: `Altium Designer Pick and Place Locations
+C:\\Projects\\Board\\Pick Place.csv
+
+========================================================================================================================
+File Design Information:
+
+Units used: mil
+
+"Designator","Comment","Layer","Footprint","Center-X(mil)","Center-Y(mil)","Rotation","Description"
+"R1","10K","TopLayer","R0402","100","-50","90",""
+`,
+    });
+
+    expect(coordinates.warnings).toEqual([]);
+    expect(coordinates.placements).toHaveLength(1);
+    expect(coordinates.placements[0]).toMatchObject({
+      designator: "R1",
+      footprint: "R0402",
+      side: "top",
+      rawLayer: "TopLayer",
+      rotationDeg: 90,
+      comment: "10K",
+    });
+    expect(coordinates.placements[0]?.mid.xMm).toBeCloseTo(2.54, 6);
+    expect(coordinates.placements[0]?.mid.yMm).toBeCloseTo(-1.27, 6);
+    expect(coordinates.placements[0]?.pad.xMm).toBeCloseTo(2.54, 6);
+  });
+
   it("parses JLC XLSX coordinate rows by column names with shuffled columns", () => {
     const coordinates = parseCoordinateCsv({
       name: "PickPlace.xlsx",

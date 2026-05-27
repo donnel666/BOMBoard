@@ -1,5 +1,6 @@
 import {
   cleanField,
+  columnKeyCandidatesFor,
   parseBomCoordinateTableCandidates,
   readField,
   sourceName,
@@ -18,6 +19,8 @@ import type {
   PlacementSide,
   PointMm,
 } from "./types.js";
+
+type LengthUnit = "mm" | "mil" | "in";
 
 const designatorColumns = [
   "Designator",
@@ -212,7 +215,10 @@ export function parseCoordinateCsv(
   };
 }
 
-export function parseLengthMm(value: string | undefined): number | null {
+export function parseLengthMm(
+  value: string | undefined,
+  defaultUnit: LengthUnit = "mm"
+): number | null {
   const field = cleanField(value);
   const match = field.match(/^([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*(mm|mil|mils|in|inch|inches|")?$/i);
   if (!match) return null;
@@ -220,10 +226,10 @@ export function parseLengthMm(value: string | undefined): number | null {
   const amount = Number.parseFloat(match[1] ?? "");
   if (!Number.isFinite(amount)) return null;
 
-  const unit = (match[2] ?? "mm").toLowerCase();
+  const unit = normalizeLengthUnit(match[2]) ?? defaultUnit;
   if (unit === "mm") return amount;
-  if (unit === "mil" || unit === "mils") return amount * 0.0254;
-  if (unit === "in" || unit === "inch" || unit === "inches" || unit === '"') return amount * 25.4;
+  if (unit === "mil") return amount * 0.0254;
+  if (unit === "in") return amount * 25.4;
   return null;
 }
 
@@ -263,10 +269,20 @@ function pointFromRow(
   yField: TableFieldKey,
   yAliases: readonly string[]
 ): PointMm | null {
-  const xMm = parseLengthMm(field(row, format, xField, xAliases));
-  const yMm = parseLengthMm(field(row, format, yField, yAliases));
+  const xMm = lengthFieldMm(row, format, xField, xAliases);
+  const yMm = lengthFieldMm(row, format, yField, yAliases);
   if (xMm === null || yMm === null) return null;
   return {xMm, yMm};
+}
+
+function lengthFieldMm(
+  row: Record<string, string>,
+  format: MatchedTableFormat | null,
+  fieldName: TableFieldKey,
+  aliases: readonly string[]
+): number | null {
+  const entry = fieldEntry(row, format, fieldName, aliases);
+  return parseLengthMm(entry?.value, lengthUnitFromHeader(entry?.header) ?? "mm");
 }
 
 function selectCoordinateTable(
@@ -349,6 +365,60 @@ function field(
   aliases: readonly string[]
 ): string | undefined {
   return readConfiguredTableField(row, format, fieldName, aliases);
+}
+
+function fieldEntry(
+  row: Record<string, string>,
+  format: MatchedTableFormat | null,
+  fieldName: TableFieldKey,
+  fallbackAliases: readonly string[]
+): {header: string; value: string} | null {
+  const configuredAliases = format?.fields[fieldName] ?? [];
+  if (configuredAliases.length > 0) {
+    const configuredEntry = readFieldEntry(row, configuredAliases);
+    if (configuredEntry !== null) return configuredEntry;
+  }
+
+  return readFieldEntry(row, fallbackAliases);
+}
+
+function readFieldEntry(
+  row: Record<string, string>,
+  aliases: readonly string[]
+): {header: string; value: string} | null {
+  const fields = new Map<string, {header: string; value: string}>();
+
+  for (const [header, value] of Object.entries(row)) {
+    for (const candidate of columnKeyCandidatesFor(header)) {
+      if (!fields.has(candidate)) fields.set(candidate, {header, value});
+    }
+  }
+
+  let emptyEntry: {header: string; value: string} | null = null;
+  for (const alias of aliases) {
+    for (const candidate of columnKeyCandidatesFor(alias)) {
+      const entry = fields.get(candidate);
+      if (entry === undefined) continue;
+      if (cleanField(entry.value) !== "") return entry;
+      emptyEntry ??= entry;
+    }
+  }
+
+  return emptyEntry;
+}
+
+function lengthUnitFromHeader(header: string | undefined): LengthUnit | null {
+  const normalized = cleanField(header).normalize("NFKC").toLowerCase();
+  const match = normalized.match(/(?:^|[^a-z])(?:mm|mils?|inch(?:es)?|in)(?=[^a-z]|$)/);
+  return normalizeLengthUnit(match?.[0]);
+}
+
+function normalizeLengthUnit(value: string | undefined): LengthUnit | null {
+  const unit = cleanField(value).normalize("NFKC").toLowerCase().replace(/[^a-z"]/g, "");
+  if (unit === "mm") return "mm";
+  if (unit === "mil" || unit === "mils") return "mil";
+  if (unit === "in" || unit === "inch" || unit === "inches" || unit === '"') return "in";
+  return null;
 }
 
 function fallbackField(row: Record<string, string>, aliases: readonly string[]): string | undefined {
