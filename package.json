@@ -17,7 +17,6 @@
     "build:footprints": "node scripts/build-footprint-library.mjs",
     "scan:unmatched": "node scripts/scan-unmatched-footprints.mjs",
     "release:version": "node scripts/set-release-version.mjs",
-    "release:gitee": "node scripts/publish-gitee-release.mjs",
     "build": "pnpm -r --if-present build",
     "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r --if-present typecheck"

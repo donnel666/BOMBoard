@@ -16,11 +16,6 @@ interface UpdateInstallResult {
   error?: string;
 }
 
-interface UpdateInstallOptions {
-  source?: "gitee" | "github";
-  feedUrl?: string;
-}
-
 let updateInstallPromise: Promise<UpdateInstallResult> | null = null;
 
 async function createMainWindow() {
@@ -58,12 +53,12 @@ app.whenReady().then(() => {
 });
 
 function registerUpdaterIpc() {
-  ipcMain.handle("bomboard:install-update", (_event, options: UpdateInstallOptions) => (
-    installUpdate(options)
+  ipcMain.handle("bomboard:install-update", () => (
+    installUpdate()
   ));
 }
 
-function installUpdate(options: UpdateInstallOptions = {}): Promise<UpdateInstallResult> {
+function installUpdate(): Promise<UpdateInstallResult> {
   if (!app.isPackaged) {
     return Promise.resolve({
       ok: false,
@@ -75,7 +70,7 @@ function installUpdate(options: UpdateInstallOptions = {}): Promise<UpdateInstal
 
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
-  configureUpdateFeed(options);
+  configureUpdateFeed();
 
   updateInstallPromise = new Promise<UpdateInstallResult>(resolve => {
     const finish = (result: UpdateInstallResult) => {
@@ -120,15 +115,7 @@ function installUpdate(options: UpdateInstallOptions = {}): Promise<UpdateInstal
   return updateInstallPromise;
 }
 
-function configureUpdateFeed(options: UpdateInstallOptions) {
-  if (options.source === "gitee" && options.feedUrl) {
-    autoUpdater.setFeedURL({
-      provider: "generic",
-      url: options.feedUrl
-    });
-    return;
-  }
-
+function configureUpdateFeed() {
   autoUpdater.setFeedURL({
     provider: "github",
     owner: "donnel666",

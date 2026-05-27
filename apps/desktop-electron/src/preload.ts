@@ -6,8 +6,8 @@ interface UpdateInstallResult {
 }
 
 interface UpdateInfo {
-  source: "gitee" | "github";
-  feedUrl?: string;
+  version: string;
+  url: string;
 }
 
 contextBridge.exposeInMainWorld("bomboard", {

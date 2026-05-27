@@ -2,7 +2,7 @@
 
 English | [中文](./README.zh-CN.md)
 
-[![GitHub](https://img.shields.io/badge/GitHub-181717?logo=github&logoColor=white)](https://github.com/donnel666/BOMBoard) [![Gitee](https://img.shields.io/badge/Gitee-C71D23?logo=gitee&logoColor=white)](https://gitee.com/donnel/BOMBoard) [![QQ Group 2163055552](https://img.shields.io/badge/QQ%20Group-2163055552-12B7F5?logo=tencentqq&logoColor=white)](https://qm.qq.com/q/iBHcSKY3wk) [![License GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue)](./LICENSE)
+[![GitHub](https://img.shields.io/badge/GitHub-181717?logo=github&logoColor=white)](https://github.com/donnel666/BOMBoard) [![QQ Group 2163055552](https://img.shields.io/badge/QQ%20Group-2163055552-12B7F5?logo=tencentqq&logoColor=white)](https://qm.qq.com/q/iBHcSKY3wk) [![License GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue)](./LICENSE)
 
 BOMBoard is an open source PCB component locator for manual SMT assembly and prototype soldering. It runs entirely in the local browser, requires no file upload, and helps you quickly find component positions on the rendered PCB after loading Gerber files plus BOM and coordinate data.
 

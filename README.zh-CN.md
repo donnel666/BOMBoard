@@ -2,7 +2,7 @@
 
 [English](./README.md) | 中文
 
-[![GitHub](https://img.shields.io/badge/GitHub-181717?logo=github&logoColor=white)](https://github.com/donnel666/BOMBoard) [![Gitee](https://img.shields.io/badge/Gitee-C71D23?logo=gitee&logoColor=white)](https://gitee.com/donnel/BOMBoard) [![QQ 群 2163055552](https://img.shields.io/badge/QQ%20%E7%BE%A4-2163055552-12B7F5?logo=tencentqq&logoColor=white)](https://qm.qq.com/q/iBHcSKY3wk) [![License GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue)](./LICENSE)
+[![GitHub](https://img.shields.io/badge/GitHub-181717?logo=github&logoColor=white)](https://github.com/donnel666/BOMBoard) [![QQ 群 2163055552](https://img.shields.io/badge/QQ%20%E7%BE%A4-2163055552-12B7F5?logo=tencentqq&logoColor=white)](https://qm.qq.com/q/iBHcSKY3wk) [![License GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue)](./LICENSE)
 
 BOMBoard 是一个开源的 PCB 元件定位工具，专为手工贴片和样板焊接场景设计。它完全运行在浏览器本地，无需上传文件，加载 Gerber 文件和 BOM/坐标数据后，即可在渲染出的板图上快速定位元件，帮你“看着板子找位置”，告别反复对图纸的烦恼。
 
