@@ -23,6 +23,12 @@ The web app runs locally in the browser. It loads a ZIP package or a local direc
 - QQ group: [2163055552](https://qm.qq.com/q/iBHcSKY3wk)
 - License: [GNU General Public License v3.0](./LICENSE)
 
+## Contributing
+
+Found a parsing issue, rendering mismatch, or workflow problem? Please open an issue: <https://github.com/donnel666/BOMBoard/issues> 🐛
+
+Pull requests are welcome. If you want to improve Gerber compatibility, BOM/coordinate parsing, footprint matching, documentation, packaging, or UI details, feel free to submit a PR: <https://github.com/donnel666/BOMBoard/pulls> ✨
+
 ## Quick Tutorial
 
 Place the tutorial screenshots in `docs/images/` with the file names shown below. Recommended screenshot size: 1440x900 or wider. Keep the same file names when replacing the images.

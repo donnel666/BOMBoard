@@ -23,6 +23,12 @@ Web 应用在浏览器本地运行。它可以加载本地 ZIP 包或目录，�
 - QQ 群：[2163055552](https://qm.qq.com/q/iBHcSKY3wk)
 - 许可证：[GNU General Public License v3.0](./LICENSE)
 
+## 参与贡献
+
+如果遇到解析错误、渲染不一致、封装匹配异常或使用流程问题，欢迎提交 issue：<https://github.com/donnel666/BOMBoard/issues> 🐛
+
+也欢迎提交 PR。无论是改进 Gerber 兼容性、BOM/坐标解析、封装匹配、文档、打包流程，还是优化 UI 细节，都可以直接发起 PR：<https://github.com/donnel666/BOMBoard/pulls> ✨
+
 ## 使用教程
 
 请把教程截图放到 `docs/images/` 目录，并使用下面步骤中标注的固定文件名。建议截图尺寸使用 1440x900 或更宽。后续手工替换时保持文件名不变即可。
