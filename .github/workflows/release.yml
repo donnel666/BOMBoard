@@ -3,8 +3,14 @@ name: Release
 on:
   push:
     tags:
-      - "v*.*.*"
-      - "[0-9]*.[0-9]*.[0-9]*"
+      - "v*"
+      - "*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version, for example v0.1.0-beta.1"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -16,20 +22,22 @@ concurrency:
 env:
   NODE_VERSION: "22"
   PNPM_VERSION: "10.25.0"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  RELEASE_REF_NAME: ${{ github.event.inputs.version || github.ref_name }}
 
 jobs:
   web-dist:
     name: Web dist
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: ${{ env.PNPM_VERSION }}
           run_install: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -37,7 +45,7 @@ jobs:
       - name: Resolve release version
         shell: bash
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          version="${RELEASE_REF_NAME#v}"
           echo "BOMBOARD_VERSION=$version" >> "$GITHUB_ENV"
           echo "VITE_BOMBOARD_VERSION=$version" >> "$GITHUB_ENV"
 
@@ -62,7 +70,7 @@ jobs:
           cd apps/web/dist
           zip -r "../../../BOMBoard-web-dist-${BOMBOARD_VERSION}.zip" .
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: web-dist
           path: BOMBoard-web-dist-*.zip
@@ -72,14 +80,14 @@ jobs:
     name: Electron Windows
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: ${{ env.PNPM_VERSION }}
           run_install: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -87,7 +95,7 @@ jobs:
       - name: Resolve release version
         shell: bash
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          version="${RELEASE_REF_NAME#v}"
           echo "BOMBOARD_VERSION=$version" >> "$GITHUB_ENV"
           echo "VITE_BOMBOARD_VERSION=$version" >> "$GITHUB_ENV"
 
@@ -106,7 +114,7 @@ jobs:
       - name: Package Electron Windows artifacts
         run: pnpm --filter @bomboard/desktop-electron dist:win
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: electron-windows
           path: apps/desktop-electron/release/*
@@ -116,14 +124,14 @@ jobs:
     name: Tauri Windows
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: ${{ env.PNPM_VERSION }}
           run_install: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -133,7 +141,7 @@ jobs:
       - name: Resolve release version
         shell: bash
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          version="${RELEASE_REF_NAME#v}"
           echo "BOMBOARD_VERSION=$version" >> "$GITHUB_ENV"
           echo "VITE_BOMBOARD_VERSION=$version" >> "$GITHUB_ENV"
 
@@ -165,7 +173,7 @@ jobs:
           Get-ChildItem $releaseDir -Filter "*.dll" | Copy-Item -Destination $portableDir
           Compress-Archive -Force -Path "$portableDir/*" -DestinationPath "BOMBoard-tauri-portable-$env:BOMBOARD_VERSION-x64.zip"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: tauri-windows
           path: |
@@ -181,7 +189,7 @@ jobs:
       - electron-windows
       - tauri-windows
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: release-assets
           merge-multiple: true
@@ -189,7 +197,8 @@ jobs:
       - name: List release assets
         run: find release-assets -maxdepth 2 -type f -print
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
+          tag_name: ${{ env.RELEASE_REF_NAME }}
           files: release-assets/*
           generate_release_notes: true
