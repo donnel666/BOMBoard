@@ -128,6 +128,7 @@ function contentType(path: string): string {
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: './',
   plugins: [react(), yaml(), footprintLibraryCachePlugin(), sampleDataPlugin()],
   define: {
     __BOMBOARD_VERSION__: JSON.stringify(appVersion),
