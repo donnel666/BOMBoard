@@ -15,7 +15,7 @@
     "dev:desktop:electron": "concurrently -k -n web,electron -c cyan,yellow \"pnpm dev:web\" \"pnpm --filter @bomboard/desktop-electron dev\"",
     "dev:desktop:tauri": "pnpm --filter @bomboard/desktop-tauri dev",
     "build:footprints": "node scripts/build-footprint-library.mjs",
-    "scan:unmatched": "node scripts/scan-unmatched-footprints.mjs",
+    "scan:unmatched": "pnpm --filter @bomboard/runtime-web build && node scripts/scan-unmatched-footprints.mjs",
     "release:version": "node scripts/set-release-version.mjs",
     "build": "pnpm -r --if-present build",
     "test": "pnpm -r --if-present test",

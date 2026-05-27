@@ -6,24 +6,19 @@ import {
   Rectangle,
   Sprite,
 } from "pixi.js";
-import {
-  defaultGerber2DProcessColors,
-  renderGerber2DSideSvg,
-} from "@bomboard/parsers";
 
 import {colorToHexNumber, defaultBoardViewerColors} from "./colors.js";
 import {ViewerEventEmitter} from "./events.js";
 import {
-  createBoardViewerModel,
   highlightedDesignatorsForSelection,
   visibleComponentsForSide,
 } from "./model.js";
 import {createSideControls} from "./side-controls.js";
 
 import type {FederatedPointerEvent, Texture} from "pixi.js";
-import type {Gerber2DProcessColors, ViewBox} from "@bomboard/parsers";
 import type {SideControls} from "./side-controls.js";
 import type {
+  BoardViewBox,
   BoardViewerColors,
   BoardViewerEventListener,
   BoardViewerEventName,
@@ -69,7 +64,6 @@ export class BoardViewer {
 
   private readonly options: BoardViewerOptions;
   private readonly colors: BoardViewerColors;
-  private readonly processColors: Gerber2DProcessColors;
   private readonly emitter = new ViewerEventEmitter();
   private readonly app = new Application();
   private readonly viewport = new Container();
@@ -99,8 +93,7 @@ export class BoardViewer {
   private constructor(options: BoardViewerOptions) {
     this.options = options;
     this.colors = {...defaultBoardViewerColors, ...options.colors};
-    this.processColors = {...defaultGerber2DProcessColors, ...options.processColors};
-    this.model = createBoardViewerModel(options);
+    this.model = options.renderModel;
     this.minZoom = positiveNumber(options.minZoom) ?? defaultMinZoom;
     this.maxZoom = positiveNumber(options.maxZoom) ?? defaultMaxZoom;
     this.state = {
@@ -457,10 +450,7 @@ export class BoardViewer {
     const cached = this.boardTextureCache.get(side);
     if (cached) return cached.promise;
 
-    const svg = renderGerber2DSideSvg(this.options.gerber, side, {
-      colors: this.processColors,
-      mirrorBottom: this.options.mirrorBottom,
-    });
+    const svg = this.options.renderModel.artwork.sideSvgs[side];
     const src = svgToDataUrl(prepareSvgForTexture(svg, this.model.viewBox));
     const entry: BoardTextureCacheEntry = {
       src,
@@ -661,7 +651,7 @@ export class BoardViewer {
   }
 
   private componentDisplayRotation(component: ViewerComponent): number {
-    return component.side === "bottom" && this.options.mirrorBottom !== false
+    return component.side === "bottom" && this.options.renderModel.mirrorBottom
       ? radians(component.rotationDeg)
       : -radians(component.rotationDeg);
   }
@@ -945,7 +935,7 @@ function flattenPoints(points: readonly {x: number; y: number}[]): number[] {
 }
 
 function fitViewportToViewBox(
-  viewBox: ViewBox,
+  viewBox: BoardViewBox,
   widthPx: number,
   heightPx: number,
   paddingPx: number
@@ -962,7 +952,7 @@ function fitViewportToViewBox(
   };
 }
 
-function prepareSvgForTexture(svg: string, viewBox: ViewBox): string {
+function prepareSvgForTexture(svg: string, viewBox: BoardViewBox): string {
   const [, , widthMm, heightMm] = viewBox;
   const devicePixelRatio = Math.min(globalThis.devicePixelRatio || 1, 2);
   const maxSideMm = Math.max(widthMm, heightMm, 1);

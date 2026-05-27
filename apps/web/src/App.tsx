@@ -2,20 +2,18 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } f
 import { unzipSync } from 'fflate'
 import { useTranslation } from 'react-i18next'
 import {
-  classifyBomCoordinateFile,
-  parseBomCoordinateProject,
-  parseGerber2DProject,
-  selectGerber2DFiles,
-  type BomCoordinateComponent,
-  type Gerber2DInputFile,
-} from '@bomboard/parsers'
-import {
-  createBoardViewer,
-  loadFootprintLibraryForComponents,
-  type BoardViewer,
+  isBomBoardImportError,
+  type BoardViewerHandle as BoardViewer,
   type BoardViewerSelectionChange,
   type BoardViewerSide,
-} from '@bomboard/viewer'
+  type BomBoardImportErrorCode,
+  type ComponentIR,
+  type ProjectImportFile,
+} from '@bomboard/core'
+import {
+  mountBomBoardViewer,
+  parseBomBoardProject,
+} from '@bomboard/runtime-web'
 
 import { appVersion } from './version'
 import './App.css'
@@ -26,12 +24,6 @@ interface ComponentRow {
   comment: string
   footprint: string
   side: ComponentRowSide
-}
-
-interface ProjectImportFile {
-  name: string
-  bytes: Uint8Array
-  file?: File
 }
 
 interface PersistedProjectFile {
@@ -253,7 +245,7 @@ function App() {
       if (importRunRef.current !== runId) return
 
       setStatusMessage(translate('status.validatingProjectFiles'))
-      const project = await parseLocalProject(files, translate)
+      const project = await parseLocalProject(sourceName, files, translate)
       if (importRunRef.current !== runId) return
 
       if (!containerRef.current) {
@@ -261,18 +253,10 @@ function App() {
       }
 
       setStatusMessage(translate('status.loadingFootprintLibrary'))
-      const footprintLibrary = await loadFootprintLibraryForComponents(
-        project.bomCoordinates.components,
-        { baseUrl: `${import.meta.env.BASE_URL}footprints` }
-      )
-      if (importRunRef.current !== runId) return
-
-      setStatusMessage(translate('status.renderingBoard'))
-      const viewer = await createBoardViewer({
+      const viewer = await mountBomBoardViewer({
+        project,
         container: containerRef.current,
-        gerber: project.gerber,
-        bomCoordinates: project.bomCoordinates,
-        footprintLibrary,
+        footprintBaseUrl: `${import.meta.env.BASE_URL}footprints`,
         side: restoredState?.side ?? 'top',
         showSideControls: false,
         onSelectionChange: syncSelection,
@@ -283,7 +267,7 @@ function App() {
       }
 
       viewerRef.current = viewer
-      setComponents(createComponentRows(project.bomCoordinates.components))
+      setComponents(createComponentRows(project.components))
       if (restoredState?.selectedDesignator) {
         viewer.selectComponent(restoredState.selectedDesignator)
       }
@@ -958,47 +942,37 @@ function isBoardViewerSide(value: unknown): value is BoardViewerSide {
   return value === 'top' || value === 'bottom'
 }
 
-async function parseLocalProject(files: readonly ProjectImportFile[], t: Translate) {
-  if (files.length === 0) {
-    throw new Error(t('errors.missingReadableFiles'))
+async function parseLocalProject(sourceName: string, files: readonly ProjectImportFile[], t: Translate) {
+  try {
+    return await parseBomBoardProject({ sourceName, files })
+  } catch (unknownError) {
+    if (isBomBoardImportError(unknownError)) {
+      throw new Error(importErrorMessage(unknownError.code, t))
+    }
+
+    throw unknownError
   }
+}
 
-  const bomFile = selectBomCoordinateFile(files, 'bom')
-  if (!bomFile) {
-    throw new Error(t('errors.missingBomFile'))
+function importErrorMessage(code: BomBoardImportErrorCode, t: Translate): string {
+  switch (code) {
+    case 'missing-readable-files':
+      return t('errors.missingReadableFiles')
+    case 'missing-bom-file':
+      return t('errors.missingBomFile')
+    case 'missing-coordinate-file':
+      return t('errors.missingCoordinateFile')
+    case 'missing-gerber-files':
+      return t('errors.missingGerberFiles')
+    case 'missing-drill-file':
+      return t('errors.missingDrillFile')
+    case 'empty-bom-designators':
+      return t('errors.emptyBomDesignators')
+    case 'empty-coordinate-placements':
+      return t('errors.emptyCoordinatePlacements')
+    case 'unsupported-project':
+      return t('status.projectCouldNotOpen')
   }
-
-  const coordinateFile = selectBomCoordinateFile(files, 'coordinates')
-  if (!coordinateFile) {
-    throw new Error(t('errors.missingCoordinateFile'))
-  }
-
-  const gerberFiles = files.map(toGerberInputFile)
-  const gerberSelection = selectGerber2DFiles(gerberFiles)
-
-  if (gerberSelection.tracespaceFiles.length === 0) {
-    throw new Error(t('errors.missingGerberFiles'))
-  }
-
-  if (gerberSelection.drillFiles.length === 0) {
-    throw new Error(t('errors.missingDrillFile'))
-  }
-
-  const bomCoordinates = parseBomCoordinateProject({
-    bom: { name: bomFile.name, bytes: bomFile.bytes },
-    coordinates: { name: coordinateFile.name, bytes: coordinateFile.bytes },
-  })
-
-  if (bomCoordinates.bom.components.length === 0) {
-    throw new Error(t('errors.emptyBomDesignators'))
-  }
-
-  if (bomCoordinates.coordinates.placements.length === 0) {
-    throw new Error(t('errors.emptyCoordinatePlacements'))
-  }
-
-  const gerber = await parseGerber2DProject(gerberFiles)
-  return { bomCoordinates, gerber }
 }
 
 function filterComponentRows(rows: readonly ComponentRow[], query: string): ComponentRow[] {
@@ -1057,36 +1031,6 @@ function isOrderedSubsequence(needle: string, haystack: string): boolean {
   }
 
   return false
-}
-
-function selectBomCoordinateFile(
-  files: readonly ProjectImportFile[],
-  kind: 'bom' | 'coordinates'
-): ProjectImportFile | null {
-  const matches = files
-    .filter(file => classifyBomCoordinateFile({ name: file.name, bytes: file.bytes }).kind === kind)
-    .sort((left, right) => left.name.localeCompare(right.name, undefined, {
-      numeric: true,
-      sensitivity: 'base',
-    }))
-
-  return matches[0] ?? null
-}
-
-function toGerberInputFile(file: ProjectImportFile): Gerber2DInputFile {
-  const name = baseName(file.name)
-  const text = new TextDecoder('utf-8').decode(file.bytes)
-  const sourceFile = file.file ?? new File(
-    [new Blob([copyBytes(file.bytes)], { type: 'text/plain' })],
-    name,
-    { type: 'text/plain' }
-  )
-
-  return {
-    name: file.name,
-    text,
-    file: sourceFile,
-  }
 }
 
 function isImportFile(file: ProjectImportFile): boolean {
@@ -1157,7 +1101,7 @@ function canSelectDirectory(): boolean {
   return 'webkitdirectory' in document.createElement('input')
 }
 
-function createComponentRows(components: readonly BomCoordinateComponent[]): ComponentRow[] {
+function createComponentRows(components: readonly ComponentIR[]): ComponentRow[] {
   const groups = new Map<string, ComponentRow>()
 
   for (const component of components) {
@@ -1167,12 +1111,12 @@ function createComponentRows(components: readonly BomCoordinateComponent[]): Com
     const row = groups.get(key) ?? {
       designators: [],
       designatorLabel: '',
-      comment: component.bom?.comment ?? component.placement.comment,
-      footprint: component.bom?.footprint ?? component.placement.footprint,
+      comment: component.value ?? component.placement.comment,
+      footprint: component.footprint ?? component.fields.footprint ?? '',
       side: component.placement.side,
     }
 
-    row.designators.push(component.designator)
+    row.designators.push(component.ref)
     row.side = mergeSide(row.side, component.placement.side)
     groups.set(key, row)
   }
@@ -1189,14 +1133,14 @@ function createComponentRows(components: readonly BomCoordinateComponent[]): Com
     .sort(compareComponentRows)
 }
 
-function componentRowKey(component: BomCoordinateComponent): string {
+function componentRowKey(component: ComponentIR): string {
   const placement = component.placement
-  const comment = normalizeComparable(component.bom?.comment ?? placement?.comment ?? '')
-  const footprint = normalizeComparable(component.bom?.footprint ?? placement?.footprint ?? '')
+  const comment = normalizeComparable(component.value ?? placement?.comment ?? '')
+  const footprint = normalizeComparable(component.footprint ?? component.fields.footprint ?? '')
   const side = placement?.side ?? 'unknown'
 
   if (comment && footprint) return `identity:${side}|${comment}|${footprint}`
-  return `component:${side}|${component.designator}`
+  return `component:${side}|${component.ref}`
 }
 
 function normalizeComparable(value: string): string {
@@ -1515,12 +1459,6 @@ function splitDesignator(designator: string): { prefix: string; number: number }
     prefix: match[1] ?? '',
     number: Number.parseInt(match[2] ?? '0', 10),
   }
-}
-
-function copyBytes(bytes: Uint8Array): ArrayBuffer {
-  const copy = new Uint8Array(bytes.byteLength)
-  copy.set(bytes)
-  return copy.buffer
 }
 
 async function installAppUpdate(updateInfo: UpdateInfo): Promise<UpdateInstallResult> {

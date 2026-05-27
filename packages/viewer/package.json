@@ -12,13 +12,17 @@
     }
   },
   "scripts": {
-    "prebuild": "pnpm --filter @bomboard/parsers build",
-    "pretypecheck": "pnpm --filter @bomboard/parsers build",
+    "prebuild": "pnpm --filter @bomboard/core build",
+    "pretypecheck": "pnpm --filter @bomboard/core build",
     "build": "tsc -p tsconfig.json && cp src/package-rules.json dist/package-rules.json",
+    "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@bomboard/parsers": "workspace:*",
+    "@bomboard/core": "workspace:*",
     "pixi.js": "^8.18.1"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.7"
   }
 }

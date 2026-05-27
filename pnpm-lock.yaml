@@ -55,12 +55,12 @@ importers:
 
   apps/web:
     dependencies:
-      '@bomboard/parsers':
+      '@bomboard/core':
         specifier: workspace:*
-        version: link:../../packages/parsers
-      '@bomboard/viewer':
+        version: link:../../packages/core
+      '@bomboard/runtime-web':
         specifier: workspace:*
-        version: link:../../packages/viewer
+        version: link:../../packages/runtime-web
       fflate:
         specifier: 0.8.3
         version: 0.8.3
@@ -124,6 +124,9 @@ importers:
 
   packages/parsers:
     dependencies:
+      '@bomboard/core':
+        specifier: workspace:*
+        version: link:../core
       '@tracespace/core':
         specifier: 5.0.0-alpha.0
         version: 5.0.0-alpha.0
@@ -144,16 +147,36 @@ importers:
         specifier: ^4.1.7
         version: 4.1.7(@types/node@24.12.4)(vite@8.0.14(@types/node@24.12.4)(jiti@2.7.0))
 
+  packages/runtime-web:
+    dependencies:
+      '@bomboard/core':
+        specifier: workspace:*
+        version: link:../core
+      '@bomboard/parsers':
+        specifier: workspace:*
+        version: link:../parsers
+      '@bomboard/viewer':
+        specifier: workspace:*
+        version: link:../viewer
+    devDependencies:
+      vitest:
+        specifier: ^4.1.7
+        version: 4.1.7(@types/node@24.12.4)(vite@8.0.14(@types/node@24.12.4)(jiti@2.7.0))
+
   packages/ui: {}
 
   packages/viewer:
     dependencies:
-      '@bomboard/parsers':
+      '@bomboard/core':
         specifier: workspace:*
-        version: link:../parsers
+        version: link:../core
       pixi.js:
         specifier: ^8.18.1
         version: 8.18.1
+    devDependencies:
+      vitest:
+        specifier: ^4.1.7
+        version: 4.1.7(@types/node@24.12.4)(vite@8.0.14(@types/node@24.12.4)(jiti@2.7.0))
 
 packages:
 

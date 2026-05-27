@@ -1,21 +1,25 @@
-import type {
-  BomCoordinateComponent,
-  CoordinateRecord,
-  Gerber2DProcessColors,
-  Gerber2DProject,
-  ParsedBomCoordinateProject,
-  ViewBox,
-} from "@bomboard/parsers";
 import type {FootprintLibrary} from "./footprint-library.js";
+import type {
+  BoardRenderComponent,
+  BoardRenderComponentElement,
+  BoardRenderComponentSize,
+  BoardRenderBomSource,
+  BoardRenderComponentSource,
+  BoardRenderModel as CoreBoardRenderModel,
+  BoardRenderPlacementSide,
+  BoardRenderPlacementSource,
+  BoardRenderPoint,
+  BoardRenderPointMm,
+  BoardViewerStateSource as CoreBoardViewerStateSource,
+} from "@bomboard/core";
 
 export type BoardViewerSide = "top" | "bottom";
 
-export type BoardViewerStateSource = "viewer" | "external";
+export type BoardViewBox = [x: number, y: number, width: number, height: number];
 
-export interface ViewerPoint {
-  x: number;
-  y: number;
-}
+export type BoardViewerStateSource = CoreBoardViewerStateSource;
+
+export type ViewerPoint = BoardRenderPoint;
 
 export interface ViewportTransform {
   x: number;
@@ -23,44 +27,21 @@ export interface ViewportTransform {
   scale: number;
 }
 
-export interface ViewerComponentSize {
-  widthMm: number;
-  heightMm: number;
-  hitWidthMm: number;
-  hitHeightMm: number;
-}
+export type ViewerComponentSize = BoardRenderComponentSize;
 
-export type ViewerComponentElement =
-  | {
-    kind: "circle";
-    center: ViewerPoint;
-    radiusMm: number;
-  }
-  | {
-    kind: "polygon";
-    points: ViewerPoint[];
-  }
-  | {
-    kind: "polyline";
-    points: ViewerPoint[];
-    strokeWidthMm: number;
-  };
+export type ViewerComponentElement = BoardRenderComponentElement;
 
-export interface ViewerComponent {
-  designator: string;
-  source: BomCoordinateComponent;
-  placement: CoordinateRecord;
-  side: BoardViewerSide | "unknown";
-  boardPosition: ViewerPoint;
-  displayPosition: ViewerPoint;
-  rotationDeg: number;
-  footprint: string;
-  comment: string;
-  libRef: string;
-  similarityKey: string;
-  size: ViewerComponentSize;
-  highlightElements: readonly ViewerComponentElement[];
-}
+export type ViewerPointMm = BoardRenderPointMm;
+
+export type ViewerPlacementSide = BoardRenderPlacementSide;
+
+export type ViewerPlacementSource = BoardRenderPlacementSource;
+
+export type ViewerBomSource = BoardRenderBomSource;
+
+export type ViewerComponentSource = BoardRenderComponentSource;
+
+export type ViewerComponent = BoardRenderComponent;
 
 export interface BoardViewerState {
   side: BoardViewerSide;
@@ -113,11 +94,11 @@ export type BoardViewerEventListener<TEventName extends BoardViewerEventName> = 
 ) => void;
 
 export type ComponentSimilarityKeyFn = (
-  component: BomCoordinateComponent
+  component: ViewerComponentSource
 ) => string | null;
 
 export type ComponentSizeFn = (
-  component: BomCoordinateComponent
+  component: ViewerComponentSource
 ) => Partial<ViewerComponentSize> | null;
 
 export interface BoardViewerColors {
@@ -132,29 +113,36 @@ export interface BoardViewerColors {
   selectedStroke: string;
 }
 
+export interface BoardSvgArtwork {
+  sideSvgs: Record<BoardViewerSide, string>;
+}
+
+export type BoardRenderModel = CoreBoardRenderModel<BoardSvgArtwork>;
+
 export interface BoardViewerData {
-  gerber: Gerber2DProject;
-  bomCoordinates: ParsedBomCoordinateProject;
+  renderModel: BoardRenderModel;
 }
 
 export interface BoardViewerOptions extends BoardViewerData {
   container: HTMLElement;
   side?: BoardViewerSide;
-  mirrorBottom?: boolean;
   showSideControls?: boolean;
   autoFitOnResize?: boolean;
   minZoom?: number;
   maxZoom?: number;
   colors?: Partial<BoardViewerColors>;
-  processColors?: Partial<Gerber2DProcessColors>;
-  getSimilarityKey?: ComponentSimilarityKeyFn;
-  getComponentSize?: ComponentSizeFn;
-  footprintLibrary?: FootprintLibrary;
   onStateChange?: BoardViewerEventListener<"statechange">;
   onSelectionChange?: BoardViewerEventListener<"selectionchange">;
 }
 
 export interface BoardViewerModel {
-  viewBox: ViewBox;
+  viewBox: BoardViewBox;
   components: readonly ViewerComponent[];
+}
+
+export interface LegacyBoardRenderModelOptions {
+  mirrorBottom?: boolean;
+  getSimilarityKey?: ComponentSimilarityKeyFn;
+  getComponentSize?: ComponentSizeFn;
+  footprintLibrary?: FootprintLibrary;
 }

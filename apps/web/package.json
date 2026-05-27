@@ -4,18 +4,18 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "predev": "pnpm --filter @bomboard/viewer build",
+    "predev": "pnpm --filter @bomboard/runtime-web build",
     "dev": "vite",
-    "prebuild": "pnpm --filter @bomboard/viewer build",
+    "prebuild": "pnpm --filter @bomboard/runtime-web build",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "pretypecheck": "pnpm --filter @bomboard/viewer build",
+    "pretypecheck": "pnpm --filter @bomboard/runtime-web build",
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
-    "@bomboard/parsers": "workspace:*",
-    "@bomboard/viewer": "workspace:*",
+    "@bomboard/core": "workspace:*",
+    "@bomboard/runtime-web": "workspace:*",
     "fflate": "0.8.3",
     "i18next": "^26.2.0",
     "i18next-browser-languagedetector": "^8.2.1",

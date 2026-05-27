@@ -11,8 +11,6 @@ import yaml from '@rollup/plugin-yaml'
 const repoRoot = fileURLToPath(new URL('../../', import.meta.url))
 const tmpRoot = resolve(repoRoot, 'tmp')
 const gerberRoot = resolve(tmpRoot, 'gerber_extracted')
-const parsersSource = resolve(repoRoot, 'packages/parsers/src/index.ts')
-const viewerSource = resolve(repoRoot, 'packages/viewer/src/index.ts')
 const rootPackage = JSON.parse(readFileSync(resolve(repoRoot, 'package.json'), 'utf8')) as { version?: string }
 const appVersion = normalizeReleaseVersion(
   process.env.VITE_BOMBOARD_VERSION
@@ -133,15 +131,6 @@ export default defineConfig({
   plugins: [react(), yaml(), footprintLibraryCachePlugin(), sampleDataPlugin()],
   define: {
     __BOMBOARD_VERSION__: JSON.stringify(appVersion),
-  },
-  resolve: {
-    alias: {
-      '@bomboard/parsers': parsersSource,
-      '@bomboard/viewer': viewerSource,
-    },
-  },
-  optimizeDeps: {
-    exclude: ['@bomboard/parsers', '@bomboard/viewer'],
   },
 })
 

@@ -2,25 +2,13 @@ import {mkdir, readFile, readdir, rm, stat, writeFile} from "node:fs/promises";
 import path from "node:path";
 import {fileURLToPath, pathToFileURL} from "node:url";
 
-import {
-  classifyBomCoordinateFile,
-  parseBomCoordinateProject,
-  parseGerber2DProject,
-  renderGerber2DSideSvg,
-  selectGerber2DFiles,
-} from "../packages/parsers/dist/index.js";
-import {
-  createBoardViewerModel,
-  loadFootprintLibraryForComponents,
-  resolveFootprintCandidates,
-} from "../packages/viewer/dist/index.js";
+import {createWebBomBoardRuntime} from "../packages/runtime-web/dist/index.js";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const inputRoot = path.resolve(repoRoot, process.argv[2] ?? "tmp/jlc");
 const outputRoot = path.resolve(repoRoot, process.argv[3] ?? "tmp/highlight-review");
 const footprintRoot = path.resolve(repoRoot, "apps/web/public/footprints");
 const mirrorBottom = true;
-const textDecoder = new TextDecoder("utf-8");
 const viewerColors = {
   background: "#0b1110",
   dimOverlay: "#050706",
@@ -56,47 +44,26 @@ async function main() {
     throw new Error(`No project files found in ${inputRoot}`);
   }
 
-  const bomFile = selectBomCoordinateFile(files, "bom");
-  if (!bomFile) throw new Error("Could not identify a BOM CSV/XLSX file.");
-
-  const coordinateFile = selectBomCoordinateFile(files, "coordinates");
-  if (!coordinateFile) throw new Error("Could not identify a coordinate CSV/XLSX file.");
-
-  const gerberFiles = files.map(toGerberInputFile);
-  const gerberSelection = selectGerber2DFiles(gerberFiles);
-  if (gerberSelection.tracespaceFiles.length === 0) {
-    throw new Error("Could not identify renderable Gerber files.");
-  }
-
   installLocalFootprintFetch();
 
-  const bomCoordinates = parseBomCoordinateProject({
-    bom: {name: bomFile.name, bytes: bomFile.bytes},
-    coordinates: {name: coordinateFile.name, bytes: coordinateFile.bytes},
+  const runtime = createWebBomBoardRuntime();
+  const project = await runtime.parseProject({
+    sourceName: path.basename(inputRoot),
+    files,
   });
-  const gerber = await parseGerber2DProject(gerberFiles);
-  const footprintLibrary = await loadFootprintLibraryForComponents(
-    bomCoordinates.components,
-    {baseUrl: "http://bomboard.local/footprints"}
-  );
-  const model = createBoardViewerModel({
-    gerber,
-    bomCoordinates,
-    footprintLibrary,
+  const model = await runtime.createRenderModel(project, {
+    footprintBaseUrl: "http://bomboard.local/footprints",
     mirrorBottom,
   });
 
-  const representatives = selectRepresentatives(model.components, footprintLibrary);
+  const representatives = selectRepresentatives(model.components);
   const highlightElementsByDesignator = new Map(
     model.components.map(component => [
       component.designator,
       component.highlightElements,
     ])
   );
-  const boardBaseSvgs = {
-    top: renderGerber2DSideSvg(gerber, "top", {mirrorBottom}),
-    bottom: renderGerber2DSideSvg(gerber, "bottom", {mirrorBottom}),
-  };
+  const boardBaseSvgs = model.artwork.sideSvgs;
 
   await rm(outputRoot, {recursive: true, force: true});
   await mkdir(outputRoot, {recursive: true});
@@ -214,25 +181,6 @@ async function readProjectFiles(root) {
   }
 }
 
-function selectBomCoordinateFile(files, kind) {
-  const matches = files
-    .filter(file => classifyBomCoordinateFile({name: file.name, bytes: file.bytes}).kind === kind)
-    .sort((left, right) => left.name.localeCompare(right.name, undefined, {
-      numeric: true,
-      sensitivity: "base",
-    }));
-
-  return matches[0] ?? null;
-}
-
-function toGerberInputFile(file) {
-  return {
-    name: file.name,
-    path: file.path,
-    text: textDecoder.decode(file.bytes),
-  };
-}
-
 function installLocalFootprintFetch() {
   globalThis.fetch = async url => {
     const parsed = new URL(String(url));
@@ -258,12 +206,12 @@ function installLocalFootprintFetch() {
   };
 }
 
-function selectRepresentatives(components, footprintLibrary) {
+function selectRepresentatives(components) {
   const groups = new Map();
 
   for (const component of components) {
     if (component.side !== "top" && component.side !== "bottom") continue;
-    const category = componentCategory(component, footprintLibrary);
+    const category = inferCategory(component);
     const footprint = cleanLabel(component.footprint || component.source.placement?.footprint || "unknown");
     const key = [component.side, category, footprint].join("|");
     const existing = groups.get(key);
@@ -281,7 +229,7 @@ function selectRepresentatives(components, footprintLibrary) {
 
   for (const component of components) {
     if (component.side !== "top" && component.side !== "bottom") continue;
-    const category = componentCategory(component, footprintLibrary);
+    const category = inferCategory(component);
     const footprint = cleanLabel(component.footprint || component.source.placement?.footprint || "unknown");
     const group = groups.get([component.side, category, footprint].join("|"));
     if (group) {
@@ -302,15 +250,6 @@ function selectRepresentatives(components, footprintLibrary) {
     if (footprint !== 0) return footprint;
     return compareDesignators(left.component.designator, right.component.designator);
   });
-}
-
-function componentCategory(component, footprintLibrary) {
-  const passiveCategory = passiveCategoryByDesignator(component.designator);
-  if (passiveCategory) return passiveCategory;
-
-  const candidate = resolveFootprintCandidates(footprintLibrary, component.source)[0];
-  if (candidate?.entry.category) return candidate.entry.category;
-  return inferCategory(component);
 }
 
 function inferCategory(component) {

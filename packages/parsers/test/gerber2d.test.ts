@@ -10,7 +10,6 @@ import {
   parseExcellonDrill,
   parseGerber2DProject,
   parseViaInfoCsv,
-  renderGerber2DReviewSvgs,
   selectGerber2DFiles,
 } from "../src/index.js";
 
@@ -239,8 +238,8 @@ describe("Altium via-info parsing", () => {
   });
 });
 
-describe("Gerber 2D project rendering", () => {
-  it("renders a self-contained top-side SVG with gold pads, solder mask, vias, and silk", async () => {
+describe("Gerber 2D project parsing", () => {
+  it("parses renderable Gerber layers, drill hits, and via info for downstream IR", async () => {
     const dir = mkdtempSync(join(tmpdir(), "bomboard-gerber-"));
 
     try {
@@ -319,18 +318,20 @@ X005000Y005000
       });
 
       const project = await parseGerber2DProject(files);
-      const svgs = renderGerber2DReviewSvgs(project);
 
       expect(project.warnings).toEqual([]);
       expect(project.drills).toHaveLength(1);
       expect(project.drills[0]?.hits).toHaveLength(1);
       expect(project.vias).toHaveLength(1);
-      expect(svgs["03-top-pads.svg"]).toContain("<circle");
-      expect(svgs["07-top-silkscreen.svg"]).toContain("<path");
-      expect(svgs["09-top-composite.svg"]).toContain("#d8a73f");
-      expect(svgs["09-top-composite.svg"]).toContain("#087a3d");
-      expect(svgs["09-top-composite.svg"]).toContain("#18a75a");
-      expect(svgs["09-top-composite.svg"]).not.toMatch(/undefined|NaN|Infinity/);
+      expect(project.fragments.boardShapeRenderFragment.svgFragment).toContain("<path");
+      expect(Object.values(project.layerClassificationsById)).toEqual([
+        expect.objectContaining({kind: "profile", side: "all"}),
+        expect.objectContaining({kind: "padMaster", side: "top"}),
+        expect.objectContaining({kind: "solderMask", side: "top"}),
+        expect.objectContaining({kind: "silkscreen", side: "top"}),
+      ]);
+      expect(Object.values(project.fragments.svgFragmentsById).join("")).toContain("<circle");
+      expect(Object.values(project.fragments.svgFragmentsById).join("")).toContain("<path");
     } finally {
       rmSync(dir, {recursive: true, force: true});
     }

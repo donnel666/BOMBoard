@@ -1,4 +1,4 @@
-import type {BomCoordinateComponent} from "@bomboard/parsers";
+import type {ViewerComponentSource} from "./types.js";
 
 export type CompactFootprintShape =
   | ["circle", number, number, number]
@@ -70,7 +70,7 @@ export const emptyFootprintLibrary: FootprintLibrary = {
 };
 
 export async function loadFootprintLibraryForComponents(
-  components: readonly BomCoordinateComponent[],
+  components: readonly ViewerComponentSource[],
   options: FootprintLibraryLoadOptions = {}
 ): Promise<FootprintLibrary> {
   if (typeof fetch !== "function") return emptyFootprintLibrary;
@@ -137,7 +137,7 @@ export async function loadFootprintLibraryForComponents(
 
 export function resolveFootprintCandidates(
   library: FootprintLibrary | null | undefined,
-  component: BomCoordinateComponent
+  component: ViewerComponentSource
 ): FootprintLibraryCandidate[] {
   if (!library || library.entriesByKey.size === 0) return [];
 
@@ -173,12 +173,12 @@ export function normalizeFootprintKey(value: string): string {
     .replace(/[^A-Z0-9]+/g, "");
 }
 
-function componentFootprintKeys(component: BomCoordinateComponent): string[] {
+function componentFootprintKeys(component: ViewerComponentSource): string[] {
   const expectedPins = componentExpectedPins(component);
   return componentPackageNames(component).flatMap(name => footprintNameKeys(name, expectedPins));
 }
 
-function componentPackageNames(component: BomCoordinateComponent): string[] {
+function componentPackageNames(component: ViewerComponentSource): string[] {
   const footprintNames = [
     component.placement?.footprint ?? "",
     component.bom?.footprint ?? "",
@@ -207,7 +207,7 @@ function componentPackageNames(component: BomCoordinateComponent): string[] {
   return [...new Set(names)];
 }
 
-function componentExpectedPins(component: BomCoordinateComponent): number | null {
+function componentExpectedPins(component: ViewerComponentSource): number | null {
   return positiveInteger(component.placement?.pins ?? null)
     ?? positiveInteger(component.bom?.pins ?? null);
 }

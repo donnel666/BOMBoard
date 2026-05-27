@@ -1,14 +1,15 @@
-import type {
-  BomCoordinateComponent,
-  CoordinateRecord,
-  DrillHit,
-  Gerber2DProject,
-  ViewBox,
-} from "@bomboard/parsers";
 import {
   resolveFootprintCandidates,
 } from "./footprint-library.js";
 import packageRulesData from "./package-rules.json" with {type: "json"};
+import type {
+  BoardArtworkLayerIR,
+  BoardArtworkPrimitiveIR,
+  BomBoardProjectIR,
+  BomItemIR,
+  ComponentIR,
+  DrillHitIR,
+} from "@bomboard/core";
 import type {
   CompactFootprintFeature,
   CompactFootprintShape,
@@ -17,12 +18,16 @@ import type {
   FootprintLibraryEntry,
 } from "./footprint-library.js";
 import type {
+  BoardViewBox,
   BoardViewerModel,
-  BoardViewerOptions,
   BoardViewerSide,
   ComponentSimilarityKeyFn,
+  ComponentSizeFn,
+  LegacyBoardRenderModelOptions,
   ViewerComponent,
   ViewerComponentElement,
+  ViewerComponentSource,
+  ViewerPlacementSource,
   ViewerComponentSize,
 } from "./types.js";
 
@@ -142,16 +147,15 @@ interface FootprintFusion {
 }
 
 export function createBoardViewerModel(
-  options: Pick<
-    BoardViewerOptions,
-    "bomCoordinates" | "gerber" | "getComponentSize" | "getSimilarityKey" | "mirrorBottom" | "footprintLibrary"
-  >
+  options: LegacyBoardRenderModelOptions & {
+    project: BomBoardProjectIR;
+  }
 ): BoardViewerModel {
-  const viewBox = options.gerber.fragments.boardShapeRenderFragment.viewBox as ViewBox;
+  const viewBox = options.project.board.viewBox as BoardViewBox;
   const getSimilarityKey = options.getSimilarityKey ?? defaultComponentSimilarityKey;
   const mirrorBottom = options.mirrorBottom !== false;
-  const geometry = createGeometryIndex(options.gerber, viewBox, mirrorBottom);
-  const components = options.bomCoordinates.components
+  const geometry = createGeometryIndex(options.project, viewBox, mirrorBottom);
+  const components = viewerComponentSourcesFromProjectIR(options.project)
     .flatMap(component => toViewerComponent(
       component,
       viewBox,
@@ -164,6 +168,17 @@ export function createBoardViewerModel(
     .sort((left, right) => left.designator.localeCompare(right.designator));
 
   return {viewBox, components};
+}
+
+export function viewerComponentSourcesFromProjectIR(
+  project: BomBoardProjectIR
+): ViewerComponentSource[] {
+  const bomItemsById = new Map(project.bom.items.map(item => [item.id, item]));
+
+  return project.components.map(component => viewerComponentSourceFromIR(
+    component,
+    component.bomItemId ? bomItemsById.get(component.bomItemId) ?? null : null
+  ));
 }
 
 export function visibleComponentsForSide(
@@ -189,7 +204,7 @@ export function highlightedDesignatorsForSelection(
 }
 
 export function defaultComponentSimilarityKey(
-  component: BomCoordinateComponent
+  component: ViewerComponentSource
 ): string | null {
   const bom = component.bom;
   const placement = component.placement;
@@ -201,14 +216,63 @@ export function defaultComponentSimilarityKey(
   return null;
 }
 
+function viewerComponentSourceFromIR(
+  component: ComponentIR,
+  bomItem: BomItemIR | null
+): ViewerComponentSource {
+  const footprint = component.footprint ?? component.fields.footprint ?? "";
+  const comment = component.value ?? component.fields.comment ?? "";
+  const pins = positiveIntegerText(component.fields.pins);
+
+  return {
+    designator: component.ref,
+    bom: bomItem ? {
+      designator: component.ref,
+      comment: bomItem.value ?? comment,
+      description: bomItem.fields.description ?? component.fields.description ?? "",
+      footprint: bomItem.footprint ?? footprint,
+      libRef: bomItem.fields.libRef ?? component.fields.libRef ?? "",
+      pins: positiveIntegerText(bomItem.fields.pins) ?? pins,
+      bomRecordIndex: bomRecordIndex(component.bomItemId) ?? 0,
+    } : null,
+    placement: component.placement ? {
+      designator: component.ref,
+      footprint,
+      mid: irPointToSourcePoint(component.placement.mid),
+      reference: irPointToSourcePoint(component.placement.reference),
+      pad: irPointToSourcePoint(component.placement.pad),
+      side: component.placement.side,
+      rawLayer: component.placement.rawLayer,
+      rotationDeg: component.placement.rotationDeg,
+      pins: component.placement.pins,
+      comment: component.placement.comment,
+      sourceRow: component.placement.sourceRow,
+      raw: component.placement.raw,
+    } : null,
+    mismatches: component.diagnostics,
+  };
+}
+
+function irPointToSourcePoint(point: {x: number; y: number}): {xMm: number; yMm: number} {
+  return {
+    xMm: point.x,
+    yMm: -point.y,
+  };
+}
+
+function bomRecordIndex(bomItemId: string | null): number | null {
+  const match = /^bom:(\d+)$/.exec(bomItemId ?? "");
+  return match ? Number(match[1]) : null;
+}
+
 function toViewerComponent(
-  component: BomCoordinateComponent,
-  viewBox: ViewBox,
+  component: ViewerComponentSource,
+  viewBox: BoardViewBox,
   mirrorBottom: boolean,
   geometry: GeometryIndex,
   footprintLibrary: FootprintLibrary | undefined,
   getSimilarityKey: ComponentSimilarityKeyFn,
-  getComponentSize: BoardViewerOptions["getComponentSize"]
+  getComponentSize: ComponentSizeFn | undefined
 ): ViewerComponent[] {
   const placement = component.placement;
   if (!placement) return [];
@@ -270,13 +334,13 @@ function toViewerComponent(
 }
 
 function normalizePlacementSide(
-  placement: CoordinateRecord
+  placement: ViewerPlacementSource
 ): BoardViewerSide | "unknown" {
   if (placement.side === "top" || placement.side === "bottom") return placement.side;
   return "unknown";
 }
 
-function estimateComponentSize(component: BomCoordinateComponent): ViewerComponentSize {
+function estimateComponentSize(component: ViewerComponentSource): ViewerComponentSize {
   const footprint = component.placement?.footprint ?? component.bom?.footprint ?? "";
   const exactSize = sizeFromExactPackage(footprint);
   if (exactSize) return exactSize;
@@ -302,7 +366,7 @@ function estimateComponentSize(component: BomCoordinateComponent): ViewerCompone
 }
 
 function matchFootprintLibraryGeometry(
-  component: BomCoordinateComponent,
+  component: ViewerComponentSource,
   footprintLibrary: FootprintLibrary | undefined,
   displayPosition: {x: number; y: number},
   rotation: number,
@@ -340,7 +404,7 @@ function matchFootprintLibraryGeometry(
 }
 
 function fuseFootprintCandidate(
-  component: BomCoordinateComponent,
+  component: ViewerComponentSource,
   candidate: FootprintLibraryCandidate,
   displayPosition: {x: number; y: number},
   displayPadPosition: {x: number; y: number},
@@ -500,7 +564,7 @@ function selectClosestPadAnchorFeature(
 }
 
 function candidateMatchesExplicitDimensions(
-  component: BomCoordinateComponent,
+  component: ViewerComponentSource,
   entry: FootprintLibraryEntry
 ): boolean {
   const componentDimensions = explicitPackageDimensions(
@@ -893,7 +957,7 @@ function localBoundsToWorldBounds(
   ]);
 }
 
-function expectedComponentPrimitiveCount(component: BomCoordinateComponent): number | null {
+function expectedComponentPrimitiveCount(component: ViewerComponentSource): number | null {
   const bomPins = positiveNumber(component.bom?.pins ?? undefined);
   if (bomPins) return Math.round(bomPins);
 
@@ -1034,35 +1098,31 @@ function fromLocalPoint(
 }
 
 function createGeometryIndex(
-  project: Gerber2DProject,
-  viewBox: ViewBox,
+  project: BomBoardProjectIR,
+  viewBox: BoardViewBox,
   mirrorBottom: boolean
 ): GeometryIndex {
-  type RenderLayer = Gerber2DProject["fragments"]["layers"][number];
-  const padSources: Record<BoardViewerSide, Record<ComponentGeometrySource, RenderLayer[]>> = {
+  const padSources: Record<BoardViewerSide, Record<ComponentGeometrySource, BoardArtworkLayerIR[]>> = {
     top: {padMaster: [], solderMask: [], paste: [], copper: []},
     bottom: {padMaster: [], solderMask: [], paste: [], copper: []},
   };
 
-  for (const layer of project.fragments.layers) {
-    const classification = project.layerClassificationsById[layer.id];
-    if (!classification) continue;
-    const geometrySource = componentGeometrySource(classification.kind);
+  for (const layer of project.board.artwork.layers) {
+    const geometrySource = layer.geometrySource;
     if (geometrySource === null) continue;
-    if (classification.side !== "top" && classification.side !== "bottom") continue;
 
-    padSources[classification.side][geometrySource].push(layer);
+    padSources[layer.side][geometrySource].push(layer);
   }
 
-  const topHoles = project.drills.flatMap(parsed => parsed.hits.map(drillHitPrimitive));
+  const topHoles = project.board.artwork.drillHits.map(drillHitPrimitive);
   const bottomHoles = mirrorBottom
     ? topHoles.map(primitive => mirrorPrimitiveX(primitive, viewBox))
     : topHoles.map(primitive => clonePrimitive(primitive));
 
   return {
     pads: {
-      top: createPrimitiveSpatialIndex(extractPadPrimitives(project, padSources.top, "top", viewBox, mirrorBottom)),
-      bottom: createPrimitiveSpatialIndex(extractPadPrimitives(project, padSources.bottom, "bottom", viewBox, mirrorBottom)),
+      top: createPrimitiveSpatialIndex(extractPadPrimitives(padSources.top, "top", viewBox, mirrorBottom)),
+      bottom: createPrimitiveSpatialIndex(extractPadPrimitives(padSources.bottom, "bottom", viewBox, mirrorBottom)),
     },
     holes: {
       top: createPrimitiveSpatialIndex(topHoles),
@@ -1071,27 +1131,17 @@ function createGeometryIndex(
   };
 }
 
-function componentGeometrySource(kind: string): ComponentGeometrySource | null {
-  if (kind === "padMaster") return "padMaster";
-  if (kind === "solderMask") return "solderMask";
-  if (kind === "paste") return "paste";
-  if (kind === "copper") return "copper";
-  return null;
-}
-
 function extractPadPrimitives(
-  project: Gerber2DProject,
-  sources: Record<ComponentGeometrySource, Gerber2DProject["fragments"]["layers"][number][]>,
+  sources: Record<ComponentGeometrySource, BoardArtworkLayerIR[]>,
   side: BoardViewerSide,
-  viewBox: ViewBox,
+  viewBox: BoardViewBox,
   mirrorBottom: boolean
 ): GeometryPrimitive[] {
   return padPrimitiveSources(sources).flatMap(source => {
     const layers = sources[source] ?? [];
 
     return layers.flatMap(layer => {
-      const fragment = project.fragments.svgFragmentsById[layer.id] ?? "";
-      const layerPrimitives = extractSvgPrimitives(fragment)
+      const layerPrimitives = geometryPrimitivesFromArtworkPrimitives(layer.primitives)
         .filter(primitive => boundsWidth(primitive.bounds) < viewBox[2] * 0.5 && boundsHeight(primitive.bounds) < viewBox[3] * 0.5)
         .map(primitive => withPrimitiveSource(primitive, source));
 
@@ -1103,7 +1153,7 @@ function extractPadPrimitives(
 }
 
 function padPrimitiveSources(
-  sources: Record<ComponentGeometrySource, Gerber2DProject["fragments"]["layers"][number][]>
+  sources: Record<ComponentGeometrySource, BoardArtworkLayerIR[]>
 ): ComponentGeometrySource[] {
   return packageRules.geometryFallback.padSourcePriority
     .filter(source => sources[source].length > 0);
@@ -1187,114 +1237,93 @@ function boundsOverlap(left: Bounds, right: Bounds): boolean {
     && left.minY <= right.maxY;
 }
 
-function extractSvgPrimitives(
-  svg: string,
+function geometryPrimitivesFromArtworkPrimitives(
+  primitives: readonly BoardArtworkPrimitiveIR[],
   options: {ignoreText?: boolean; pathMode?: "bounds" | "polyline"} = {}
 ): GeometryPrimitive[] {
-  return [
-    ...extractRectPrimitives(svg),
-    ...extractCirclePrimitives(svg),
-    ...extractPolygonPrimitives(svg),
-    ...extractPathPrimitives(svg, options),
-  ];
+  return primitives.flatMap(primitive => geometryPrimitivesFromArtworkPrimitive(primitive, options));
 }
 
-function extractRectPrimitives(svg: string): GeometryPrimitive[] {
-  return [...svg.matchAll(/<rect\b[^>]*>/g)]
-    .map(match => attributes(match[0]))
-    .flatMap(attributes => {
-      const x = numberAttribute(attributes, "x");
-      const y = numberAttribute(attributes, "y");
-      const width = numberAttribute(attributes, "width");
-      const height = numberAttribute(attributes, "height");
-      if (x === null || y === null || width === null || height === null || width <= 0 || height <= 0) return [];
+function geometryPrimitivesFromArtworkPrimitive(
+  primitive: BoardArtworkPrimitiveIR,
+  options: {ignoreText?: boolean; pathMode?: "bounds" | "polyline"}
+): GeometryPrimitive[] {
+  switch (primitive.kind) {
+    case "circle":
+      if (primitive.radius <= 0) return [];
+      return [{
+        kind: "circle",
+        center: primitive.center,
+        radiusMm: primitive.radius,
+        bounds: circleBounds(primitive.center.x, primitive.center.y, primitive.radius),
+      }];
+    case "rect": {
+      if (primitive.width <= 0 || primitive.height <= 0) return [];
       const points = [
-        {x, y},
-        {x: x + width, y},
-        {x: x + width, y: y + height},
-        {x, y: y + height},
+        {x: primitive.x, y: primitive.y},
+        {x: primitive.x + primitive.width, y: primitive.y},
+        {x: primitive.x + primitive.width, y: primitive.y + primitive.height},
+        {x: primitive.x, y: primitive.y + primitive.height},
       ];
       return [{
-        kind: "polygon" as const,
+        kind: "polygon",
         bounds: boundsFromPoints(points),
         points,
       }];
-    });
-}
-
-function extractCirclePrimitives(svg: string): GeometryPrimitive[] {
-  return [...svg.matchAll(/<circle\b[^>]*>/g)]
-    .map(match => attributes(match[0]))
-    .flatMap(attributes => {
-      const cx = numberAttribute(attributes, "cx");
-      const cy = numberAttribute(attributes, "cy");
-      const radius = numberAttribute(attributes, "r");
-      if (cx === null || cy === null || radius === null || radius <= 0) return [];
+    }
+    case "polygon":
+      if (primitive.points.length === 0) return [];
       return [{
-        kind: "circle" as const,
-        center: {x: cx, y: cy},
-        radiusMm: radius,
-        bounds: circleBounds(cx, cy, radius),
+        kind: "polygon",
+        bounds: boundsFromPoints(primitive.points),
+        points: primitive.points,
       }];
-    });
-}
-
-function extractPolygonPrimitives(svg: string): GeometryPrimitive[] {
-  return [...svg.matchAll(/<polygon\b[^>]*>/g)]
-    .map(match => attributes(match[0]))
-    .flatMap(attributes => {
-      const points = (attributes.points ?? "")
-        .trim()
-        .split(/\s+/)
-        .map(point => point.split(",").map(Number))
-        .filter((point): point is [number, number] => point.length === 2 && point.every(Number.isFinite));
-      if (points.length === 0) return [];
-      const geometryPoints = points.map(point => ({x: point[0], y: point[1]}));
-
+    case "polyline": {
+      if (primitive.points.length < 2) return [];
+      const strokeWidth = primitive.style?.strokeWidth ?? 0;
       return [{
-        kind: "polygon" as const,
-        bounds: boundsFromPoints(geometryPoints),
-        points: geometryPoints,
+        kind: "polyline",
+        bounds: expandBounds(boundsFromPoints(primitive.points), strokeWidth / 2),
+        points: primitive.points,
+        strokeWidthMm: strokeWidth,
       }];
-    });
+    }
+    case "path":
+      return pathGeometryPrimitives(primitive, options);
+  }
 }
 
-function extractPathPrimitives(
-  svg: string,
+function pathGeometryPrimitives(
+  primitive: Extract<BoardArtworkPrimitiveIR, {kind: "path"}>,
   options: {ignoreText?: boolean; pathMode?: "bounds" | "polyline"}
 ): GeometryPrimitive[] {
-  return [...svg.matchAll(/<path\b[^>]*>/g)]
-    .map(match => attributes(match[0]))
-    .flatMap(attributes => {
-      const strokeWidth = numberAttribute(attributes, "stroke-width") ?? 0;
-      return splitPathSubpaths(attributes.d ?? "")
-        .flatMap((subpath): GeometryPrimitive[] => {
-          const points = pointsFromPathData(subpath);
-          if (points.length === 0) return [];
+  const strokeWidth = primitive.style?.strokeWidth ?? 0;
+  return splitPathSubpaths(primitive.data)
+    .flatMap((subpath): GeometryPrimitive[] => {
+      const points = pointsFromPathData(subpath);
+      if (points.length === 0) return [];
 
-          const bounds = expandBounds(boundsFromPoints(points), strokeWidth / 2);
-          const isText = isLikelyTextPath(bounds);
-          if (options.ignoreText && isText) return [];
-          const fill = (attributes.fill ?? "").trim().toLowerCase();
-          const strokeOnly = strokeWidth > 0 && (fill === "" || fill === "none");
+      const bounds = expandBounds(boundsFromPoints(points), strokeWidth / 2);
+      const isText = isLikelyTextPath(bounds);
+      if (options.ignoreText && isText) return [];
+      const strokeOnly = strokeWidth > 0 && primitive.style?.fill === "none";
 
-          if (options.pathMode === "polyline") {
-            return [{
-              kind: "polyline" as const,
-              bounds,
-              points,
-              strokeWidthMm: strokeWidth,
-              isText,
-            }];
-          }
+      if (options.pathMode === "polyline") {
+        return [{
+          kind: "polyline",
+          bounds,
+          points,
+          strokeWidthMm: strokeWidth,
+          isText,
+        }];
+      }
 
-          return [{
-            kind: "polygon" as const,
-            bounds,
-            points: strokeOnly ? boundsPolygon(bounds) : points,
-            isText,
-          }];
-        });
+      return [{
+        kind: "polygon",
+        bounds,
+        points: strokeOnly ? boundsPolygon(bounds) : points,
+        isText,
+      }];
     });
 }
 
@@ -1578,25 +1607,14 @@ function isLikelyTextPath(bounds: Bounds): boolean {
   return Math.max(boundsWidth(bounds), boundsHeight(bounds)) < silkscreenMinimumFeatureMm;
 }
 
-function attributes(tag: string): Record<string, string> {
-  return Object.fromEntries(
-    [...tag.matchAll(/([\w:-]+)="([^"]*)"/g)].map(match => [match[1] ?? "", match[2] ?? ""])
-  );
-}
-
-function numberAttribute(attributes: Record<string, string>, name: string): number | null {
-  const value = Number(attributes[name]);
-  return Number.isFinite(value) ? value : null;
-}
-
-function drillHitPrimitive(hit: DrillHit): GeometryPrimitive {
-  const radius = Math.max(hit.diameterMm / 2, 0.04);
+function drillHitPrimitive(hit: DrillHitIR): GeometryPrimitive {
+  const radius = Math.max(hit.diameter / 2, 0.04);
   return {
     kind: "circle",
-    center: {x: hit.xMm, y: -hit.yMm},
+    center: hit.position,
     radiusMm: radius,
-    bounds: circleBounds(hit.xMm, -hit.yMm, radius),
-    diameterMm: hit.diameterMm,
+    bounds: circleBounds(hit.position.x, hit.position.y, radius),
+    diameterMm: hit.diameter,
   };
 }
 
@@ -1616,7 +1634,7 @@ function clonePrimitive(primitive: GeometryPrimitive): GeometryPrimitive {
   };
 }
 
-function mirrorPrimitiveX(primitive: GeometryPrimitive, viewBox: ViewBox): GeometryPrimitive {
+function mirrorPrimitiveX(primitive: GeometryPrimitive, viewBox: BoardViewBox): GeometryPrimitive {
   if (primitive.kind === "circle") {
     const center = mirrorPointX(primitive.center, viewBox);
     return {
@@ -1634,7 +1652,7 @@ function mirrorPrimitiveX(primitive: GeometryPrimitive, viewBox: ViewBox): Geome
   };
 }
 
-function mirrorPointX(point: GeometryPoint, viewBox: ViewBox): GeometryPoint {
+function mirrorPointX(point: GeometryPoint, viewBox: BoardViewBox): GeometryPoint {
   const mirrorAxis = 2 * viewBox[0] + viewBox[2];
   return {
     x: mirrorAxis - point.x,
@@ -1758,7 +1776,7 @@ function distanceMm(
   return Math.hypot(left.xMm - right.xMm, left.yMm - right.yMm);
 }
 
-function mirrorX(x: number, viewBox: ViewBox): number {
+function mirrorX(x: number, viewBox: BoardViewBox): number {
   return 2 * viewBox[0] + viewBox[2] - x;
 }
 
@@ -1778,6 +1796,11 @@ function normalizeComparable(value: string): string {
 
 function positiveNumber(value: number | undefined): number | null {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function positiveIntegerText(value: string | undefined): number | null {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : null;
 }
 
 function clamp(value: number, min: number, max: number): number {

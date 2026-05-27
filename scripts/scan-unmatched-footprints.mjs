@@ -2,24 +2,13 @@ import {mkdir, readFile, readdir, stat, writeFile} from "node:fs/promises";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
 
-import {
-  classifyBomCoordinateFile,
-  parseBomCoordinateProject,
-  parseGerber2DProject,
-  selectGerber2DFiles,
-} from "../packages/parsers/dist/index.js";
-import {
-  createBoardViewerModel,
-  loadFootprintLibraryForComponents,
-  resolveFootprintCandidates,
-} from "../packages/viewer/dist/index.js";
+import {createWebBomBoardRuntime} from "../packages/runtime-web/dist/index.js";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2).filter(arg => arg !== "--");
 const inputRoot = path.resolve(repoRoot, args[0] ?? "tmp/jlc");
 const outputRoot = path.resolve(repoRoot, args[1] ?? "tmp/analysis");
 const footprintRoot = path.resolve(repoRoot, "apps/web/public/footprints");
-const textDecoder = new TextDecoder("utf-8");
 const unmatchedDotRadiusMm = 0.45;
 
 main().catch(error => {
@@ -29,38 +18,26 @@ main().catch(error => {
 
 async function main() {
   const files = await readProjectFiles(inputRoot);
-  const bomFile = selectBomCoordinateFile(files, "bom");
-  if (!bomFile) throw new Error(`Could not identify BOM file in ${inputRoot}`);
-  const coordinateFile = selectBomCoordinateFile(files, "coordinates");
-  if (!coordinateFile) throw new Error(`Could not identify coordinate file in ${inputRoot}`);
-
-  const gerberFiles = files.map(toGerberInputFile);
-  const gerberSelection = selectGerber2DFiles(gerberFiles);
-  if (gerberSelection.tracespaceFiles.length === 0) {
-    throw new Error(`Could not identify renderable Gerber files in ${inputRoot}`);
+  if (files.length === 0) {
+    throw new Error(`No project files found in ${inputRoot}`);
   }
 
   installLocalFootprintFetch();
 
-  const bomCoordinates = parseBomCoordinateProject({
-    bom: {name: bomFile.name, bytes: bomFile.bytes},
-    coordinates: {name: coordinateFile.name, bytes: coordinateFile.bytes},
+  const runtime = createWebBomBoardRuntime();
+  const project = await runtime.parseProject({
+    sourceName: path.basename(inputRoot),
+    files,
   });
-  const gerber = await parseGerber2DProject(gerberFiles);
-  const footprintLibrary = await loadFootprintLibraryForComponents(
-    bomCoordinates.components,
-    {baseUrl: "http://bomboard.local/footprints"}
-  );
-  const model = createBoardViewerModel({
-    gerber,
-    bomCoordinates,
-    footprintLibrary,
+  const model = await runtime.createRenderModel(project, {
+    footprintBaseUrl: "http://bomboard.local/footprints",
     mirrorBottom: true,
   });
+  const bomItemsById = new Map(project.bom.items.map(item => [item.id, item]));
 
   const unmatchedComponents = model.components
     .filter(isUnmatchedDotComponent)
-    .map(component => componentReport(component, bomCoordinates, footprintLibrary))
+    .map(component => componentReport(component, bomItemsById))
     .sort(compareComponentReports);
   const unmatchedFootprints = groupUnmatchedFootprints(unmatchedComponents);
   const lcscCodes = extractLcscCodes(unmatchedComponents);
@@ -92,7 +69,7 @@ async function main() {
   console.log(`groups=${unmatchedFootprints.length}`);
   console.log(`lcsc_codes=${lcscCodes.length}`);
   for (const group of unmatchedFootprints.slice(0, 40)) {
-    console.log(`${group.count}\t${group.designators.join(",")}\tfp=${group.footprint}\tcomment=${group.comment}\tpins=${group.pins}\tcandidates=${group.candidateCount}\tlcsc=${group.lcscCodes.join(",")}`);
+    console.log(`${group.count}\t${group.designators.join(",")}\tfp=${group.footprint}\tcomment=${group.comment}\tpins=${group.pins}\tcandidates=${formatCandidateCount(group.candidateCount)}\tlcsc=${group.lcscCodes.join(",")}`);
   }
 }
 
@@ -131,25 +108,6 @@ async function readProjectFiles(root) {
   }
 }
 
-function selectBomCoordinateFile(files, kind) {
-  const matches = files
-    .filter(file => classifyBomCoordinateFile({name: file.name, bytes: file.bytes}).kind === kind)
-    .sort((left, right) => left.name.localeCompare(right.name, undefined, {
-      numeric: true,
-      sensitivity: "base",
-    }));
-
-  return matches[0] ?? null;
-}
-
-function toGerberInputFile(file) {
-  return {
-    name: file.name,
-    path: file.path,
-    text: textDecoder.decode(file.bytes),
-  };
-}
-
 function installLocalFootprintFetch() {
   globalThis.fetch = async url => {
     const parsed = new URL(String(url));
@@ -185,20 +143,11 @@ function isUnmatchedDotComponent(component) {
     && Math.abs(element.radiusMm - unmatchedDotRadiusMm) < 0.000001;
 }
 
-function componentReport(component, bomCoordinates, footprintLibrary) {
+function componentReport(component, bomItemsById) {
   const bomRecord = component.source.bom
-    ? bomCoordinates.bom.records[component.source.bom.bomRecordIndex] ?? null
+    ? bomItemsById.get(`bom:${component.source.bom.bomRecordIndex}`) ?? null
     : null;
-  const raw = bomRecord?.raw ?? {};
-  const candidates = resolveFootprintCandidates(footprintLibrary, component.source);
-  const firstCandidates = candidates.slice(0, 5).map(candidate => ({
-    name: candidate.entry.name,
-    pads: candidate.entry.pads.length,
-    holes: candidate.entry.holes.length,
-    vias: candidate.entry.vias.length,
-    key: candidate.entry.key,
-    matchedKey: candidate.matchedKey,
-  }));
+  const raw = bomRecord?.fields ?? {};
   const values = reportValues(component, raw);
 
   return {
@@ -208,8 +157,8 @@ function componentReport(component, bomCoordinates, footprintLibrary) {
     comment: component.comment,
     libRef: component.libRef,
     pins: component.source.placement?.pins ?? component.source.bom?.pins ?? null,
-    candidateCount: candidates.length,
-    firstCandidates,
+    candidateCount: null,
+    firstCandidates: [],
     rawLcs: pickRawFields(raw, [
       "LCSC Part Name",
       "Supplier Part",
@@ -318,10 +267,14 @@ function summaryMarkdown(totalComponents, components, groups, lcscCodes) {
   ];
 
   for (const group of groups) {
-    lines.push(`| ${group.count} | ${group.designators.join(", ")} | ${escapeMarkdown(group.footprint)} | ${escapeMarkdown(group.comment)} | ${group.pins ?? ""} | ${group.candidateCount} | ${group.lcscCodes.join(", ")} |`);
+    lines.push(`| ${group.count} | ${group.designators.join(", ")} | ${escapeMarkdown(group.footprint)} | ${escapeMarkdown(group.comment)} | ${group.pins ?? ""} | ${formatCandidateCount(group.candidateCount)} | ${group.lcscCodes.join(", ")} |`);
   }
 
   return `${lines.join("\n")}\n`;
+}
+
+function formatCandidateCount(value) {
+  return typeof value === "number" ? String(value) : "n/a";
 }
 
 function firstNonEmptyString(values) {

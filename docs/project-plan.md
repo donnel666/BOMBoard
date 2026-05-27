@@ -1,663 +1,528 @@
-# BOMBoard Project Plan
+# BOMBoard 项目计划
 
-## 1. Project Goal
+## 1. 项目目标
 
-Build a 2D PCB review tool for patch workers, maintenance workers, and similar operators.
+BOMBoard 是一个面向 PCB 贴片、维修、来料检查和制造审查场景的 2D PCB BOM/板图联动工具。
 
-The product must:
+核心体验是：
 
-- Display PCB manufacturing data on the left side, including board outline, copper-related layers, pads, drill data, silkscreen, and similar board features.
-- Display the BOM list on the right side.
-- Support cross-probing between BOM items and board features.
-- Run as both:
-  - a web application
-  - a desktop application packaged with Electron
-- Use one shared frontend codebase.
+- 左侧显示 PCB 板图、焊盘、孔、丝印、阻焊、外形等制造或设计信息。
+- 右侧显示 BOM/元件列表。
+- 支持 BOM 与板图之间的双向定位、同类高亮、搜索、筛选和侧面切换。
+- 支持 Web 与 Electron 桌面端共用一套前端代码。
+- 所有解析、匹配和渲染尽量在本地完成，不依赖远程服务。
 
-This is a **2D project**, not a 3D project.
+本项目是 **2D 工具**，不是 3D PCB 查看器。
 
-## 2. Hard Product Rules
+## 2. 最新架构决策
 
-These rules are fixed and should drive all design and implementation decisions.
+### 2.1 结论
 
-### 2.1 Required Input Set
-
-The minimum valid project input is:
-
-- Gerber files
-- Drill file
-- Coordinate file
-- BOM file
-
-Supported coordinate files may be labeled as:
-
-- XY
-- CPL
-- POS
-- Pick-and-Place
-- Centroid
-
-If the coordinate file is missing, the project **cannot** support component mapping and should be rejected during import.
-
-There is no heuristic fallback mode in the initial product design.
-
-### 2.2 Single Codebase Rule
-
-There must not be two separate implementations for web and desktop.
-
-The desktop version is only a packaging shell around the same frontend application.
-
-### 2.3 Local Processing Rule
-
-All parsing, matching, and rendering logic should run locally in the frontend runtime:
-
-- In the browser for the web version
-- Inside the renderer process for the Electron version
-
-This supports data-security-sensitive users who do not want to upload manufacturing data to a remote service.
-
-## 3. Recommended Technology Stack
-
-### 3.1 Core Stack
-
-- **Runtime:** Node.js
-- **Package manager / workspace:** pnpm
-- **Language:** TypeScript
-- **Web app:** React + Vite
-- **Desktop shell:** Electron
-- **Rendering:** PixiJS
-
-### 3.2 Supporting Libraries
-
-- **Viewport controls:** `pixi-viewport`
-- **BOM table:** `@tanstack/react-table`
-- **CSV/TXT parsing:** `papaparse`
-- **Excel parsing:** `sheetjs` / `xlsx`
-- **ZIP handling:** `fflate`
-- **Spatial indexing / hit testing:** `flatbush` or `rbush`
-- **Background parsing:** Web Workers
-
-### 3.3 Gerber Handling
-
-Initial pure-frontend evaluation target:
-
-- `@tracespace/parser`
-- `@tracespace/identify-layers`
-- `@tracespace/plotter`
-- `@tracespace/renderer`
-
-Important note:
-
-- Gerber support must be isolated behind an internal adapter layer.
-- Do not let the rest of the application depend directly on a single Gerber library API.
-- If the first Gerber library proves insufficient for real customer files, only the adapter layer should change.
-
-## 4. Architecture Decision
-
-The correct architecture is:
-
-- one shared frontend application
-- one shared domain/data-processing layer
-- one shared rendering layer
-- one desktop wrapper using Electron
-
-The desktop version is not a separate product. It is the same application loaded in a desktop shell.
-
-### 4.1 Monorepo Structure
-
-Recommended structure:
+采用四层结构：
 
 ```text
-BOMBoard/
-  apps/
-    web/
-    desktop-electron/
-    desktop-tauri/
-  packages/
-    core/
-    parsers/
-    viewer/
-    ui/
-  docs/
+apps/web
+  -> packages/runtime-web
+       -> packages/core
+       -> packages/parsers
+       -> packages/viewer
+
+packages/parsers
+  -> packages/core
+
+packages/viewer
+  -> packages/core
 ```
 
-### `apps/web`
+核心原则：
 
-Contains the browser application built with React and Vite.
+- `packages/core` 是稳定契约层，定义 IR、数据接口、能力接口、错误码和运行时抽象。
+- `packages/parsers` 是解析实现层，按 core 的 parser 契约把源文件转换为 core IR。
+- `packages/viewer` 是渲染实现层，按 core 的 renderer/viewer 契约消费 core IR，不依赖 parser 内部类型。
+- `packages/runtime-web` 是 Web 装配层，负责把 core 契约、parsers 实现和 viewer 实现组装成 Web 可调用的应用级 API。
+- `apps/web` 不直接操作 parser 和 renderer，不直接 import `@bomboard/parsers` 或 `@bomboard/viewer`。
 
-### `apps/desktop-electron`
+新增 `packages/runtime-web` 的目的，是避免让 `packages/core` 反向依赖 `packages/parsers` / `packages/viewer` 造成循环依赖。
 
-Contains Electron-specific code for the Chromium-bundled desktop build:
+### 2.2 为什么不能让 core 直接 import 实现包
 
-- `main` process
-- `preload` bridge
-- packaging configuration
+如果 core 直接依赖 parsers/viewer，而 parsers/viewer 又必须依赖 core 的契约，会形成：
 
-This app should load the same shared frontend code used by the web application.
+```text
+core -> parsers -> core
+core -> viewer  -> core
+```
 
-### `apps/desktop-tauri`
+这会带来几个问题：
 
-Contains Tauri-specific code for the Windows WebView2 desktop build.
+- workspace 构建顺序变脆。
+- TypeScript declaration 输出容易互相牵连。
+- core 的稳定契约会被具体实现污染。
+- 后续 AD、EasyEDA、KiCad、Eagle/Fusion 接入时，core 会膨胀成实现集合。
 
-### `packages/core`
+因此 core 只定义抽象契约；装配包负责选择和调用具体实现。
 
-Contains shared business logic:
+## 3. 包职责
 
-- TypeScript domain models
-- file normalization
-- BOM/XY/Gerber matching
-- coordinate normalization
-- geometry helpers
-- validation rules
+### 3.1 `packages/core`
 
-### `packages/parsers`
+core 是 parsers、viewer、runtime-web、apps 共同依赖的稳定契约层。
 
-Contains import adapters for:
+core 负责：
+
+- 定义 `BomBoardProjectIR`。
+- 定义统一坐标系。
+- 定义 source file、board、layer、artwork、drill、via、component、BOM、diagnostic 等 IR 类型。
+- 定义 parser 契约，例如 `ProjectParser`。
+- 定义 renderer 契约，例如 `BoardRenderer`。
+- 定义 viewer host 契约，例如 `BoardViewerHost`。
+- 定义应用级 runtime 抽象，例如 `BomBoardRuntime`。
+- 定义泛型 `BoardRenderModel` 契约，包含 viewer 需要的组件位置、显示位置、尺寸、命中区域和高亮几何，但不固定 DOM 容器或具体渲染承载形态。
+- 定义统一导入错误码，例如 `missing-bom-file`、`missing-drill-file`。
+- 定义 viewer handle、viewer state、selection event 等跨层交互接口。
+
+core 不负责：
+
+- 不写 Gerber 语法解析。
+- 不写 BOM/坐标格式解析。
+- 不写 AD/EasyEDA/KiCad/Eagle/Fusion 具体解析。
+- 不写 PixiJS、Canvas、DOM 渲染。
+- 不定义 Web `HTMLElement` 或浏览器 `File` 为核心必需类型。
+- 不规定 renderer 必须输出 SVG、Canvas texture 或其他具体产物。
+- 不 import `@bomboard/parsers`。
+- 不 import `@bomboard/viewer`。
+
+### 3.2 `packages/parsers`
+
+parsers 是源文件解析实现层。
+
+parsers 负责：
+
+- 实现 core 定义的 parser 契约。
+- 把 Gerber、Drill、BOM、Coordinate 等制造文件转换为 `BomBoardProjectIR`。
+- 导出当前制造文件 `ProjectParser` 实现 `manufacturingProjectParser`。
+- 后续新增 AD、EasyEDA、KiCad、Eagle/Fusion、InteractiveHtmlBom Generic JSON 等 parser。
+- 保留格式探测、字段识别、单位转换、坐标转换、诊断收集等解析逻辑。
+
+parsers 不负责：
+
+- 不创建 PixiJS viewer。
+- 不操作 DOM。
+- 不处理 React 状态。
+- 不承担应用 UI 编排。
+- 不让 viewer 依赖其内部类型。
+
+第一阶段已有制造文件入口：
+
+```text
+Gerber + Drill + BOM + Coordinate
+  -> manufacturingProjectParser
+  -> parseManufacturingProject()
+  -> BomBoardProjectIR
+```
+
+### 3.3 `packages/viewer`
+
+viewer 是渲染和交互实现层。
+
+viewer 负责：
+
+- 从 `BomBoardProjectIR` 或 core 定义的渲染输入派生板图渲染模型。
+- 实现 core 定义的 `BoardRenderer`，当前默认实现为 `defaultBoardRenderer`。
+- 实现 core 定义的 `BoardViewerHost`，当前默认实现为 `pixiBoardViewerHost`。
+- 使用 PixiJS 挂载板图 viewer。
+- 管理 pan/zoom、side 切换、选择、高亮、hit testing。
+- 提供 viewer handle，供上层调用 `setSide()`、`selectComponent()`、`clearSelection()` 等。
+
+viewer 不负责：
+
+- 不 import `@bomboard/parsers`。
+- 不知道 Gerber parser、BOM parser、AD parser 的内部类型。
+- 不做源文件格式探测。
+- 不读取上传文件集合。
+
+### 3.4 `packages/runtime-web`
+
+runtime-web 是装配包。
+
+runtime-web 负责：
+
+- 依赖 core、parsers、viewer。
+- 把 `ProjectParser` 实现注册到 runtime。
+- 把 `BoardRenderer` / `BoardViewerHost` 实现注册到 runtime。
+- 只装配实现，不把格式探测、具体解析、Pixi viewer 适配代码写在 runtime-web 内部。
+- 为 Web 提供应用级 API：
+  - `parseBomBoardProject()`
+  - `mountBomBoardViewer()`
+  - `openBomBoardProject()`
+  - `createWebBomBoardRuntime()`
+- 实现 `BomBoardRuntime.openProject()` 和 `BomBoardRuntime.mountProjectViewer()`，让 project -> render model -> viewer 的真实 Web 流程也受 core 契约约束。
+- 把 parsers 导出的 manufacturing parser 与 viewer 导出的默认 renderer/viewer host 装配起来。
+- 承担 Web 环境相关的文件对象、footprint asset base URL、viewer mount container 等连接逻辑。
+
+runtime-web 不负责：
+
+- 不定义核心 IR。
+- 不实现具体 Gerber 解析细节。
+- 不实现 PixiJS 内部渲染细节。
+- 不实现 `ProjectParser`、`BoardRenderer`、`BoardViewerHost` 的具体业务逻辑。
+- 不持有 React UI 状态。
+
+### 3.5 `apps/web`
+
+web 是应用壳。
+
+web 负责：
+
+- 文件选择、ZIP 展开、持久化项目缓存。
+- React UI 状态。
+- 国际化文案。
+- 错误展示。
+- 把文件、容器、base URL、事件回调交给 runtime-web。
+
+web 不负责：
+
+- 不直接 import `@bomboard/parsers`。
+- 不直接 import `@bomboard/viewer`。
+- 不调用 `selectGerber2DFiles()`。
+- 不调用 `parseManufacturingProject()`。
+- 不调用 `createBoardRenderModel()`。
+- 不调用 `createBoardViewer()`。
+
+web 可以依赖 core 类型，例如 `ComponentIR`、`BoardViewerSide`、`BoardViewerHandle`，但应用级操作通过 `@bomboard/runtime-web` 完成。
+
+## 4. 数据流
+
+当前制造文件路线：
+
+```text
+用户选择文件
+  -> apps/web 展开 ZIP / 过滤无效文件
+  -> runtime-web.parseBomBoardProject()
+  -> manufacturing ProjectParser
+  -> packages/parsers 解析 Gerber/BOM/Coordinate/Drill/Via
+  -> packages/core BomBoardProjectIR
+  -> runtime-web.mountBomBoardViewer()
+  -> packages/viewer 创建 Render Model 和 Pixi viewer
+  -> apps/web 使用 BoardViewerHandle 做 UI 联动
+```
+
+目标路线：
+
+```text
+source files
+  -> runtime parser selection
+  -> parser implementation
+  -> core IR
+  -> renderer implementation
+  -> viewer host implementation
+  -> app UI
+```
+
+## 5. IR 原则
+
+IR 是 source parser 与 viewer 之间的稳定兼容层。
+
+IR 必须满足：
+
+- 与输入格式无关。
+- 与 PixiJS、Canvas、DOM 无关。
+- 坐标系明确。
+- 单位明确。
+- side 明确。
+- source file 可追踪。
+- diagnostic 可追踪。
+- 可序列化。
+- 可 diff。
+- 能支持参考项目输入输出比对。
+
+当前统一坐标系：
+
+```text
+units: mm
+origin: board
+xAxis: right
+yAxis: down
+angleUnit: deg
+angleDirection: clockwise
+bottomMirroredInModel: false
+```
+
+第一阶段 IR 不保留 renderer 产物字段。Layer artwork 使用 core 定义的 primitive 列表承载，包括 path、circle、rect、polygon、polyline 等基础几何。Gerber parser 可以从 tracespace 产物转换出这些 primitive，但 SVG 字符串不进入 core 契约。
+
+后续应在现有 primitive 基础上逐步补充更高语义的 Gerber/EDA artwork：
+
+- pad
+- track
+- arc
+- fill
+- region
+- polygon
+- text
+- drill
+- via
+- net
+- component footprint geometry
+
+## 6. 支持格式路线
+
+### 6.1 Phase 1：制造文件路线
+
+必须支持：
+
+- Gerber
+- Excellon drill
+- BOM CSV/TXT
+- Coordinate / Pick-and-Place / Centroid CSV/TXT
+- Via info sidecar
+
+制造文件最低有效输入：
 
 - BOM
-- coordinate file
+- Coordinate
 - Gerber
-- drill file
+- Drill
 
-### `packages/viewer`
+缺少 coordinate 时不能进入组件映射模式。第一阶段不做没有 coordinate 的组件位置推断 fallback。
 
-Contains the PixiJS board viewer:
+### 6.2 Phase 2：IR JSON 输入
 
-- layer rendering
-- component overlays
-- selection state
-- highlight logic
-- hit testing
-- pan/zoom behavior
+支持 `bomboard-project-v1.json` 直接导入。
 
-### `packages/ui`
+用途：
 
-Contains shared React UI pieces if needed:
+- 让外部工具直接生成 BOMBoard IR。
+- 让 AD exporter、脚本和测试工具先绕过 native parser。
+- 支持黄金样例和回归测试。
 
-- table wrappers
-- import panels
-- validation report components
-- search controls
+### 6.3 Phase 3：InteractiveHtmlBom Generic JSON
 
-## 5. Input Contract
+支持 InteractiveHtmlBom Generic JSON 作为输入吸收能力。
 
-The application should standardize around the following file categories.
+用途：
 
-### 5.1 Required Files
+- 吸收参考项目样例。
+- 对比 `pcbdata + components` 与 BOMBoard IR 的表达差异。
+- 辅助验证 IR 覆盖面。
 
-### Gerber
+注意：BOMBoard 不兼容 `pcbdata`，也不把 `pcbdata` 作为内部通用格式。输入可以转换，内部统一是 BOMBoard IR。
 
-Board manufacturing layers, including as available:
+### 6.4 Phase 4：AD / Altium
 
-- top copper
-- bottom copper
-- solder mask
-- silkscreen
-- paste
-- board outline / profile
-- internal layers if present
+第一阶段不做 native `.PcbDoc` direct parser。
 
-### Drill
+优先路线：
 
-Excellon drill data, including:
-
-- plated holes
-- non-plated holes
-
-### Coordinate File
-
-Must provide enough information to locate components on the board.
-
-Required normalized fields:
-
-- `refdes`
-- `x`
-- `y`
-- `side`
-
-Preferred additional fields:
-
-- `rotation`
-- `package`
-- `description`
-
-### BOM
-
-Required normalized fields:
-
-- `refdes[]`
-- `value`
-- `qty`
-
-Preferred additional fields:
-
-- `package`
-- `mpn`
-- `manufacturer`
-- `description`
-- `supplier`
-
-### 5.2 Import Validation Rules
-
-Import must fail or block entry into the viewer when:
-
-- coordinate file is missing
-- BOM is missing usable `RefDes`
-- coordinate file is missing usable `RefDes`
-- coordinate file is missing usable `X` or `Y`
-- Gerber set cannot be identified as a valid board dataset
-
-Import should show a validation report when:
-
-- BOM and coordinate file contain unmatched `RefDes`
-- units are ambiguous
-- side values are inconsistent
-- duplicate `RefDes` exist
-- the board outline cannot be identified cleanly
-
-## 6. Internal Data Model
-
-All source files should be normalized into a stable internal model before rendering.
-
-### 6.1 Suggested TypeScript Models
-
-```ts
-export type BoardSide = "top" | "bottom";
-
-export type BoardFeatureKind =
-  | "pad"
-  | "track"
-  | "region"
-  | "hole"
-  | "slot"
-  | "silk"
-  | "mask"
-  | "paste"
-  | "outline";
-
-export interface BomItem {
-  id: string;
-  refdes: string[];
-  value: string | null;
-  package: string | null;
-  mpn: string | null;
-  manufacturer: string | null;
-  description: string | null;
-  qty: number | null;
-}
-
-export interface Placement {
-  refdes: string;
-  x: number;
-  y: number;
-  rotation: number;
-  side: BoardSide;
-  package: string | null;
-}
-
-export interface BoardFeature {
-  id: string;
-  layer: string;
-  kind: BoardFeatureKind;
-  side: BoardSide | null;
-  geometry: unknown;
-}
-
-export interface ComponentInstance {
-  refdes: string;
-  bomItemId: string | null;
-  x: number;
-  y: number;
-  rotation: number;
-  side: BoardSide;
-  package: string | null;
-  featureIds: string[];
-}
-
-export interface ProjectFileSet {
-  gerbers: File[];
-  drill: File[];
-  placements: File[];
-  bom: File[];
-}
+```text
+Altium Designer script/plugin
+  -> PCBServer.GetCurrentPCBBoard()
+  -> BomBoardProjectIR JSON
 ```
 
-The exact types can evolve, but the product should keep this architectural separation:
-
-- raw imported files
-- normalized parsed records
-- joined component model
-- renderable board model
-
-## 7. Data Join Strategy
-
-The primary join is:
-
-- `BOM.RefDes <-> Placement.RefDes`
-
-That gives the component identity and location.
-
-The secondary join is:
-
-- `Placement <-> board features`
-
-That associates a component location with nearby pads and footprint geometry on the rendered board.
-
-This structure enables the required product interactions.
-
-### 7.1 Forward Cross-Probing
-
-When the user clicks a BOM row:
-
-1. Expand the row into one or more `RefDes`.
-2. Resolve matching placements.
-3. Highlight all matching component positions on the board.
-4. Highlight the related footprint/pad region for each matching placement.
-5. Zoom or center on the selected result when appropriate.
-
-### 7.2 Reverse Cross-Probing
-
-When the user clicks a board feature or footprint region:
-
-1. Hit-test the clicked geometry.
-2. Resolve the owning component instance.
-3. Find the related BOM item.
-4. Scroll and highlight the BOM row.
-5. Highlight all same-part or same-selection components when required by the UI mode.
-
-## 8. Normalization Requirements
-
-The major engineering difficulty is not the UI framework. It is normalization.
-
-The following must be handled explicitly in shared code:
-
-- unit normalization
-  - `mm`
-  - `mil`
-  - `inch`
-- coordinate origin differences
-- top/bottom side normalization
-- bottom-side mirroring
-- rotation convention normalization
-- `RefDes` cleanup and case normalization
-- `RefDes` range expansion such as `R1-R4,R8`
-- duplicate or conflicting placement rows
-
-This work belongs in `packages/core`, not scattered across UI components.
-
-## 9. Rendering Model
-
-The product is a 2D board viewer.
-
-Recommended rendering behavior:
-
-- use PixiJS for the main board viewport
-- keep board rendering separate from DOM-based UI panels
-- use a spatial index for fast hit-testing
-- keep layer visibility controllable
-- render component overlays as a separate layer from raw Gerber geometry
-
-Suggested visual layers:
+导出内容：
 
 - board outline
-- copper
-- solder mask
-- silkscreen
-- drill holes
-- pads / pad overlays
-- component highlight overlays
-- selection markers
+- component
+- pad
+- via
+- track
+- arc
+- fill
+- region
+- polygon
+- text
+- BOM fields / parameters
 
-## 10. Worker Strategy
+native `.PcbDoc` direct parser 后续评估，但必须基于 AD exporter 产物做黄金对比。
 
-To keep the UI responsive, expensive operations should run in Web Workers:
+### 6.5 Phase 5：EasyEDA / KiCad / Eagle / Fusion
 
-- ZIP extraction
-- Gerber parsing
-- drill parsing
-- BOM parsing
-- coordinate parsing
-- normalization
-- geometry indexing
+后续在 `packages/parsers` 中增加 parser 实现：
 
-The UI thread should be responsible for:
+- EasyEDA Standard / Pro
+- KiCad `.kicad_pcb`
+- Eagle `.brd`
+- Fusion Electronics exported board data
 
-- user interaction
-- table rendering
-- viewport control
-- selection state
-- final rendering commands
+所有路线最终都输出 `BomBoardProjectIR`。
 
-This worker strategy should be shared between the web app and the Electron renderer.
+## 7. 当前第一阶段落地范围
 
-## 11. Product Features for the First Version
+第一阶段目标不是一次性支持全部格式，而是完成架构解耦。
 
-The first release should focus on deterministic, production-relevant workflows.
+验收标准：
 
-### 11.1 Core Features
+- core 定义 IR 和跨层接口。
+- runtime-web 只装配 parsers 和 viewer 导出的实现，避免 core 循环依赖和装配层业务化。
+- web 不直接 import parsers/viewer。
+- parsers 产出 `BomBoardProjectIR`。
+- viewer 消费 `BomBoardProjectIR` / core render contract。
+- 当前 Gerber+BOM+Coordinate+Drill 样例渲染不退化。
+- BOM 点击、高亮、反查、side 切换继续可用。
 
-- import Gerber + drill + coordinate + BOM files
-- validate the file set before opening the viewer
-- render the board in 2D
-- display the BOM list
-- select BOM rows and highlight board components
-- click board components and locate the BOM row
-- search by `RefDes`, value, package, or MPN
-- filter by side
-- toggle board layers
-- zoom, pan, and fit-to-view
+第一阶段不做：
 
-### 11.2 Nice-to-Have Features After MVP
+- 不引入 AD native parser。
+- 不引入 EasyEDA native parser。
+- 不引入 KiCad native parser。
+- 不实现缺 coordinate 的组件推断。
+- 不把 `pcbdata` 作为内部格式。
+- 不把 parser 内部类型暴露给 viewer。
 
-- multi-select components
-- highlight all identical parts
-- import preset templates for common BOM/XY formats
-- remember column mapping rules
-- recent file sets in the desktop version
-- offline-first desktop mode
+## 8. 测试与比对策略
 
-## 12. Delivery Phases
+后续所有 parser 都必须支持参考项目比对。
 
-### Phase 1: Foundation
+测试分层：
 
-Goal:
+1. parser 单元测试
+   - 字段识别
+   - 单位转换
+   - side 识别
+   - rotation 归一化
+   - drill/via 解析
 
-- Establish the monorepo and package boundaries.
+2. IR snapshot / diff 测试
+   - source file count
+   - board bounds / viewBox
+   - layer function / side
+   - component count
+   - BOM item count
+   - drill/via count
+   - diagnostics
 
-Tasks:
+3. viewer 边界测试
+   - viewer 不 import parser 包。
+   - render model 不包含 parser 内部类型。
+   - BoardViewerHandle 只通过 core 契约暴露。
 
-- initialize pnpm workspace
-- create `apps/web`
-- create `apps/desktop-electron`
-- create `apps/desktop-tauri`
-- create `packages/core`
-- create `packages/parsers`
-- create `packages/viewer`
-- create `packages/ui`
-- configure shared TypeScript settings
+4. 参考项目差分测试
+   - 与 InteractiveHtmlBom、EasyEDA iBOM extension、AD exporter 的输入输出逐项对比。
+   - 差分报告必须区分：
+     - 一致项
+     - 精度误差
+     - 坐标系差异
+     - 参考项目 bug
+     - BOMBoard 有意偏差
+     - 未支持项
 
-Verification:
+## 9. 关键风险
 
-- workspace installs cleanly
-- web app runs
-- Electron shell launches the shared frontend
+### 9.1 循环依赖
 
-### Phase 2: Input Pipeline
+风险：core 直接依赖 parsers/viewer。
 
-Goal:
+控制方式：
 
-- Import and normalize BOM and coordinate files reliably.
+- core 只定义契约。
+- runtime-web 做装配。
+- CI/脚本扫描 core 中是否出现 `@bomboard/parsers` 或 `@bomboard/viewer`。
 
-Tasks:
+### 9.2 core 膨胀
 
-- implement BOM CSV/XLSX parsing
-- implement coordinate CSV/TXT parsing
-- add column mapping and normalization
-- add strict validation
-- add import report UI
+风险：core 变成所有实现逻辑的集合。
 
-Verification:
+控制方式：
 
-- sample BOMs parse into normalized records
-- sample XY files parse into normalized placements
-- `RefDes` joins work across real samples
+- core 只放稳定接口、IR、错误码、状态和跨层协议。
+- 格式解析留在 parsers。
+- PixiJS/DOM 留在 viewer。
+- Web mount target、浏览器 File 对象、viewer side artwork 等具体形态留在 runtime-web/viewer 的泛型实现中。
+- Web 环境装配留在 runtime-web。
 
-### Phase 3: Board Parsing and Rendering
+### 9.3 IR 不稳定
 
-Goal:
+风险：parser 和 viewer 同时依赖 IR，频繁改 IR 会造成大面积修改。
 
-- Render valid board datasets in a 2D viewer.
+控制方式：
 
-Tasks:
+- IR 版本号固定为 `bomboard-project-v1`。
+- 新字段优先可选。
+- 破坏性变更必须升级 schema version。
+- 每个 parser 输出都要有 snapshot/diff 测试。
 
-- implement Gerber adapter
-- implement drill adapter
-- identify layers
-- convert board data into renderable geometry
-- build PixiJS viewport
-- add layer toggles and fit-to-view
+### 9.4 Gerber artwork 语义不足
 
-Verification:
+风险：第一阶段虽然已经移除 core 中的 SVG fragment，但 artwork primitive 仍偏基础几何，尚未表达 net、track、pad、region、text 等更高层语义。
 
-- multiple real board datasets render correctly
-- pan/zoom remains smooth
-- visible layers match expectations
+控制方式：
 
-### Phase 4: Cross-Probing
+- core 只保留通用 primitive 和稳定语义字段，不接受 renderer 产物字段回流。
+- viewer 只依赖 core IR 字段，不依赖 Gerber parser 类型。
+- 后续逐步引入更高语义的结构化几何 IR。
 
-Goal:
+### 9.5 格式支持扩大后的测试压力
 
-- Link BOM and board interactions.
+风险：AD/EasyEDA/KiCad/Eagle/Fusion 各自坐标系、layer、component model 差异大。
 
-Tasks:
+控制方式：
 
-- build joined component model
-- create component overlay layer
-- implement BOM-to-board highlighting
-- implement board-to-BOM reverse lookup
-- add same-part highlighting behavior
+- 每个格式先做字段映射表。
+- 每个格式必须有黄金样例。
+- 先支持导出 IR，再评估 native parser。
 
-Verification:
+## 10. 里程碑
 
-- clicking BOM rows highlights expected placements
-- clicking board components locates the correct BOM row
-- performance remains acceptable with realistic board sizes
+### M1：架构隔离完成
 
-### Phase 5: Desktop Packaging
+- core 定义 IR 和运行时接口。
+- runtime-web 装配包存在。
+- runtime-web 不实现 parser/renderer/viewer host 的具体业务逻辑。
+- web 不直接 import parsers/viewer。
+- parsers 输出 IR。
+- viewer 消费 IR。
+- 当前制造文件样例通过 smoke test。
 
-Goal:
+### M2：IR JSON 导入
 
-- Deliver the same application as a local desktop product.
+- 支持 `bomboard-project-v1.json`。
+- 增加 schema 校验。
+- 增加 IR snapshot 测试。
 
-Tasks:
+### M3：参考项目比对工具
 
-- wire Electron main/preload
-- load the shared frontend
-- add local file-open support
-- package installers
+- 建立输入输出差分脚本。
+- 吸收 InteractiveHtmlBom Generic JSON。
+- 生成差分报告。
 
-Verification:
+### M4：AD exporter
 
-- desktop build runs offline
-- local file import works
-- behavior matches the web version
+- 提供 AD script/plugin 导出 BOMBoard IR。
+- 建立 AD golden sample。
+- 与 AD exporter 输出做稳定比对。
 
-### Phase 6: Hardening
+### M5：更多 EDA parser
 
-Goal:
+- EasyEDA parser。
+- KiCad parser。
+- Eagle/Fusion parser。
+- 每个 parser 独立测试并输出同一 IR。
 
-- Make the product production-ready for real operator use.
+## 11. 当前代码边界扫描目标
 
-Tasks:
+必须长期保持：
 
-- add import templates for common customer formats
-- improve validation error clarity
-- add performance profiling
-- test large boards and large BOMs
-- stabilize layer mapping and coordinate normalization
+```text
+packages/core/src
+  不出现 @bomboard/parsers
+  不出现 @bomboard/viewer
 
-Verification:
+apps/web 源码和构建配置
+  不出现 @bomboard/parsers
+  不出现 @bomboard/viewer
 
-- test suite passes
-- sample-project regression set passes
-- large-file interaction remains usable
+packages/viewer/src
+  不出现 @bomboard/parsers
+  不出现 Gerber2DProject / ParsedBomCoordinateProject 等 parser 内部类型
+```
 
-## 13. Testing Strategy
+允许：
 
-Testing should focus on data correctness first.
+```text
+packages/runtime-web/src
+  可以 import @bomboard/core
+  可以 import @bomboard/parsers
+  可以 import @bomboard/viewer
+```
 
-### Unit Tests
-
-- `RefDes` normalization
-- `RefDes` range expansion
-- unit conversion
-- rotation normalization
-- side normalization
-- BOM/XY join behavior
-
-### Integration Tests
-
-- import BOM + XY + Gerber + drill sample sets
-- validate component linking
-- validate selection and reverse lookup
-
-### Regression Fixtures
-
-Create a fixture library of real customer-like projects:
-
-- simple single-side boards
-- double-side boards
-- boards with dense passive populations
-- projects with awkward BOM column names
-- projects with awkward coordinate exports
-
-## 14. Risks and Mitigations
-
-### Risk 1: Gerber library limitations
-
-Risk:
-
-- The first browser-native Gerber library may not handle all real-world files well enough.
-
-Mitigation:
-
-- isolate Gerber handling behind an adapter
-- maintain fixture-based validation
-- swap parser implementation only inside `packages/parsers`
-
-### Risk 2: Coordinate normalization differences
-
-Risk:
-
-- Different CAD/CAM exports will use different origins, units, and side conventions.
-
-Mitigation:
-
-- centralize normalization logic
-- add import-time validation and preview
-- support importer presets per vendor format
-
-### Risk 3: Performance on large boards
-
-Risk:
-
-- Large Gerber datasets may affect responsiveness.
-
-Mitigation:
-
-- move parsing to workers
-- spatially index geometry
-- separate static board rendering from dynamic selection overlays
-
-## 15. Final Recommendation
-
-The project should proceed with the following decisions fixed:
-
-- This is a **2D** product.
-- The required input set is **Gerber + drill + coordinate file + BOM**.
-- There is **no support** for component mapping without the coordinate file.
-- The application should use **one shared frontend codebase**.
-- The web version and Electron desktop version must reuse the same parsing, matching, and rendering logic.
-- The recommended stack is **Node.js + pnpm + React + Vite + TypeScript + Electron + PixiJS**.
-
-This keeps the product aligned with mainstream PCB manufacturing data flows while avoiding two independent implementations.
+这是装配包的职责。
