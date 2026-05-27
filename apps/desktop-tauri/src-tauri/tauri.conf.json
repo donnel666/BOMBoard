@@ -29,6 +29,9 @@
     "targets": [
       "nsis"
     ],
+    "icon": [
+      "icons/icon.ico"
+    ],
     "publisher": "BOMBoard",
     "category": "DeveloperTool",
     "shortDescription": "BOMBoard",
